@@ -10,6 +10,9 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
+      {/* Fixed particle constellation — behind all content, disperses on scroll */}
+      <ParticleConstellation scrollProgressRef={heroScrollProgress} />
+
       {/* Nav — fixed, transparent on black */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-8 py-6">
         <div className="max-w-[1280px] mx-auto flex items-center justify-between">
@@ -27,27 +30,24 @@ export default function LandingPage() {
             <span className="text-[14px] font-semibold tracking-[0.025em] uppercase">BlastRadius</span>
           </div>
           <div className="flex items-center gap-10">
-            <Link href="/app" className="text-[14px] font-semibold tracking-[0.025em] uppercase text-[#9a9a9a] hover:text-white transition-colors">
-              Tool
-            </Link>
             <a href="https://github.com/hydra-db/hydradb" target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold tracking-[0.025em] uppercase text-[#9a9a9a] hover:text-white transition-colors">
               HydraDB
             </a>
-            <Link href="/app" className="btn-violet">
-              Launch Tool
+            <Link href="/app" className="btn-violet flex items-center gap-1">
+              Launch <span className="hidden md:block">Tool</span>
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero — two-column asymmetric: text left, particles right */}
+      {/* Hero — text on left, particles visible behind on right (fixed canvas) */}
       <section className="relative min-h-screen flex items-center px-8 pt-32 pb-20 overflow-hidden">
-        {/* Subtle violet glow behind particles */}
+        {/* Subtle violet glow */}
         <div className="absolute top-1/2 right-0 w-[600px] h-[600px] -translate-y-1/2 translate-x-1/4 bg-[#8052ff]/6 rounded-full blur-[180px] pointer-events-none" />
 
-        <div className="relative z-10 max-w-[1280px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          {/* Left: text */}
-          <div>
+        <div className="relative z-10 max-w-[1280px] mx-auto w-full">
+          {/* Text occupies left half — particles show through on the right */}
+          <div className="max-w-[640px]">
             <FadeUp>
               <div className="text-amber-label mb-6">
                 Supply chain attacks are surging
@@ -83,20 +83,11 @@ export default function LandingPage() {
               </div>
             </FadeUp>
           </div>
-
-          {/* Right: particle constellation — the signature visual */}
-          <div className="relative h-[500px] lg:h-[600px]">
-            <ParticleConstellation
-              className="absolute inset-0"
-              mode="hero"
-              scrollProgressRef={heroScrollProgress}
-            />
-          </div>
         </div>
       </section>
 
       {/* Problem section — text LEFT, visual RIGHT (zigzag 1) */}
-      <section className="px-8 py-[120px]">
+      <section className="relative z-10 px-8 py-[120px]">
         <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-[120px] items-start">
           <FadeUp>
             <div className="text-amber-label mb-6">The problem</div>
@@ -122,7 +113,7 @@ export default function LandingPage() {
       </section>
 
       {/* Three layers — visual LEFT, text RIGHT (zigzag 2) */}
-      <section className="px-8 py-[120px]">
+      <section className="relative z-10 px-8 py-[120px]">
         <div className="max-w-[1280px] mx-auto">
           <FadeUp className="mb-[96px]">
             <div className="text-amber-label mb-6">Three layers</div>
@@ -158,7 +149,7 @@ export default function LandingPage() {
       </section>
 
       {/* How it works — text LEFT, code RIGHT (zigzag continues) */}
-      <section className="px-8 py-[120px]">
+      <section className="relative z-10 px-8 py-[120px]">
         <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-[120px] items-start">
           <FadeUp>
             <div>
@@ -192,7 +183,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA — centered, spacious */}
-      <section className="px-8 py-[160px]">
+      <section className="relative z-10 px-8 py-[160px]">
         <FadeUp className="max-w-[1280px] mx-auto text-center">
           <h2 className="text-heading-lg mb-8">
             See the graph explode.
@@ -208,7 +199,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="px-8 py-12 border-t border-[#111]">
+      <footer className="relative z-10 px-8 py-12 border-t border-[#111]">
         <div className="max-w-[1280px] mx-auto flex items-center justify-between text-[12px] text-[#9a9a9a]">
           <span>Built for Hack Hydra 2026</span>
           <div className="flex items-center gap-6">

@@ -44,7 +44,7 @@ body {
 
 /* Dala typography utilities */
 .text-display {
-  font-size: clamp(48px, 8vw, 113px);
+  font-size: clamp(48px, 8vw, 100px);
   line-height: 1.1;
   letter-spacing: -0.04em;
   font-weight: 400;

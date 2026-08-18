@@ -5,18 +5,16 @@ import { useEffect, useRef } from "react";
 /**
  * Particle Constellation — Dala-style signature visual.
  *
- * Two modes:
- * - "hero": Brain-shape cluster on the right half + ambient particles. Responds to scroll
- *   by dispersing particles as the user scrolls past the hero.
- * - "ambient": Scattered ambient particles across full canvas for background atmosphere.
+ * Fixed full-viewport canvas that sits behind all content.
+ * Particles start as a brain-shape cluster (hero) and disperse
+ * as the user scrolls, remaining visible as ambient background
+ * behind all subsequent sections.
  */
 export function ParticleConstellation({
   className,
-  mode = "hero",
   scrollProgressRef,
 }: {
   className?: string;
-  mode?: "hero" | "ambient";
   scrollProgressRef?: React.RefObject<number>;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -65,11 +63,12 @@ export function ParticleConstellation({
     function resize() {
       if (!canvas || !ctx) return;
       const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      width = rect.width;
-      height = rect.height;
+      width = window.innerWidth;
+      height = window.innerHeight;
       canvas.width = width * dpr;
       canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
       initParticles();
@@ -79,84 +78,59 @@ export function ParticleConstellation({
       particles = [];
       if (width === 0 || height === 0) return;
 
-      if (mode === "hero") {
-        // Brain/cloud cluster positioned on the right half
-        const centerX = width * 0.65;
-        const centerY = height * 0.5;
-        const maxRadius = Math.min(width * 0.4, height * 0.45);
+      // Brain/cloud cluster positioned on the right half of the hero
+      const centerX = width * 0.68;
+      const centerY = height * 0.5;
+      const maxRadius = Math.min(width * 0.35, height * 0.42);
 
-        const clusterCount = Math.min(500, Math.floor((width * height) / 600));
-        for (let i = 0; i < clusterCount; i++) {
-          const angle = Math.random() * Math.PI * 2;
-          const r = Math.pow(Math.random(), 0.5) * maxRadius;
-          // Brain-like lobes
-          const lobeFactor = 1 + 0.35 * Math.sin(angle * 2) + 0.15 * Math.sin(angle * 5);
-          const x = centerX + Math.cos(angle) * r * lobeFactor;
-          const y = centerY + Math.sin(angle) * r * 0.7;
+      const clusterCount = Math.min(600, Math.floor((width * height) / 500));
+      for (let i = 0; i < clusterCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const r = Math.pow(Math.random(), 0.5) * maxRadius;
+        // Brain-like lobes
+        const lobeFactor = 1 + 0.35 * Math.sin(angle * 2) + 0.15 * Math.sin(angle * 5);
+        const x = centerX + Math.cos(angle) * r * lobeFactor;
+        const y = centerY + Math.sin(angle) * r * 0.7;
 
-          particles.push({
-            x,
-            y,
-            baseX: x,
-            baseY: y,
-            vx: (Math.random() - 0.5) * 0.2,
-            vy: (Math.random() - 0.5) * 0.2,
-            size: 1 + Math.random() * 2.5,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            opacity: 0.3 + Math.random() * 0.5,
-            rotation: Math.random() * Math.PI * 2,
-            rotationSpeed: (Math.random() - 0.5) * 0.015,
-            isAmbient: false,
-            scatterAngle: Math.random() * Math.PI * 2,
-            scatterSpeed: 0.5 + Math.random() * 2,
-          });
-        }
+        particles.push({
+          x,
+          y,
+          baseX: x,
+          baseY: y,
+          vx: (Math.random() - 0.5) * 0.15,
+          vy: (Math.random() - 0.5) * 0.15,
+          size: 1 + Math.random() * 2.5,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          opacity: 0.35 + Math.random() * 0.5,
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: (Math.random() - 0.5) * 0.015,
+          isAmbient: false,
+          scatterAngle: Math.random() * Math.PI * 2,
+          scatterSpeed: 0.8 + Math.random() * 2.5,
+        });
+      }
 
-        // Ambient particles across full canvas
-        const ambientCount = Math.min(100, Math.floor((width * height) / 5000));
-        for (let i = 0; i < ambientCount; i++) {
-          const x = Math.random() * width;
-          const y = Math.random() * height;
-          particles.push({
-            x,
-            y,
-            baseX: x,
-            baseY: y,
-            vx: (Math.random() - 0.5) * 0.1,
-            vy: (Math.random() - 0.5) * 0.1,
-            size: 1 + Math.random() * 1.5,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            opacity: 0.08 + Math.random() * 0.2,
-            rotation: Math.random() * Math.PI * 2,
-            rotationSpeed: (Math.random() - 0.5) * 0.008,
-            isAmbient: true,
-            scatterAngle: Math.random() * Math.PI * 2,
-            scatterSpeed: 0.3 + Math.random() * 1.5,
-          });
-        }
-      } else {
-        // Ambient-only mode for background sections
-        const count = Math.min(120, Math.floor((width * height) / 4000));
-        for (let i = 0; i < count; i++) {
-          const x = Math.random() * width;
-          const y = Math.random() * height;
-          particles.push({
-            x,
-            y,
-            baseX: x,
-            baseY: y,
-            vx: (Math.random() - 0.5) * 0.08,
-            vy: (Math.random() - 0.5) * 0.08,
-            size: 1 + Math.random() * 1.5,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            opacity: 0.05 + Math.random() * 0.15,
-            rotation: Math.random() * Math.PI * 2,
-            rotationSpeed: (Math.random() - 0.5) * 0.005,
-            isAmbient: true,
-            scatterAngle: Math.random() * Math.PI * 2,
-            scatterSpeed: 0.3 + Math.random() * 1,
-          });
-        }
+      // Ambient particles scattered across full viewport
+      const ambientCount = Math.min(150, Math.floor((width * height) / 4000));
+      for (let i = 0; i < ambientCount; i++) {
+        const x = Math.random() * width;
+        const y = Math.random() * height;
+        particles.push({
+          x,
+          y,
+          baseX: x,
+          baseY: y,
+          vx: (Math.random() - 0.5) * 0.1,
+          vy: (Math.random() - 0.5) * 0.1,
+          size: 1 + Math.random() * 1.5,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          opacity: 0.06 + Math.random() * 0.15,
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: (Math.random() - 0.5) * 0.008,
+          isAmbient: true,
+          scatterAngle: Math.random() * Math.PI * 2,
+          scatterSpeed: 0.3 + Math.random() * 1.5,
+        });
       }
     }
 
@@ -173,7 +147,7 @@ export function ParticleConstellation({
       ctx.translate(x, y);
       ctx.rotate(rotation);
       ctx.strokeStyle = color;
-      ctx.globalAlpha = opacity;
+      ctx.globalAlpha = Math.max(0, Math.min(1, opacity));
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(0, -size);
@@ -188,46 +162,57 @@ export function ParticleConstellation({
       if (!ctx) return;
       ctx.clearRect(0, 0, width, height);
 
-      // Get scroll progress (0 = hero visible, 1 = hero scrolled past)
+      // Scroll progress: 0 = hero at top, 1 = hero fully scrolled past
       const scrollProgress = scrollProgressRef?.current ?? internalScrollRef.current;
 
       for (const p of particles) {
-        p.x += p.vx;
-        p.y += p.vy;
         p.rotation += p.rotationSpeed;
 
         if (p.isAmbient) {
-          // Ambient particles wrap around
-          if (p.x < 0) p.x = width;
-          if (p.x > width) p.x = 0;
-          if (p.y < 0) p.y = height;
-          if (p.y > height) p.y = 0;
+          // Ambient particles: slow drift, wrap around viewport
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < -10) p.x = width + 10;
+          if (p.x > width + 10) p.x = -10;
+          if (p.y < -10) p.y = height + 10;
+          if (p.y > height + 10) p.y = -10;
+
+          // Ambient particles stay at constant low opacity
+          drawTriangle(p.x, p.y, p.size, p.rotation, p.color, p.opacity);
         } else {
           // Cluster particles: disperse on scroll
           if (scrollProgress > 0) {
-            const scatterDist = scrollProgress * p.scatterSpeed * 300;
-            p.x = p.baseX + Math.cos(p.scatterAngle) * scatterDist;
-            p.y = p.baseY + Math.sin(p.scatterAngle) * scatterDist;
+            // Scatter outward from base position
+            const scatterDist = scrollProgress * p.scatterSpeed * 400;
+            const targetX = p.baseX + Math.cos(p.scatterAngle) * scatterDist;
+            const targetY = p.baseY + Math.sin(p.scatterAngle) * scatterDist;
+
+            // Smooth interpolation toward scatter target
+            p.x += (targetX - p.x) * 0.08;
+            p.y += (targetY - p.y) * 0.08;
           } else {
-            // Gentle drift back to base position
-            p.x += (p.baseX - p.x) * 0.05;
-            p.y += (p.baseY - p.y) * 0.05;
+            // Return to base position when scrolled back up
+            p.x += (p.baseX - p.x) * 0.1;
+            p.y += (p.baseY - p.y) * 0.1;
           }
 
           // Subtle organic motion
-          p.x += Math.sin(Date.now() * 0.0005 + p.baseX * 0.01) * 0.15;
-          p.y += Math.cos(Date.now() * 0.0005 + p.baseY * 0.01) * 0.15;
-        }
+          const t = Date.now() * 0.0004;
+          p.x += Math.sin(t + p.baseX * 0.01) * 0.12;
+          p.y += Math.cos(t + p.baseY * 0.01) * 0.12;
 
-        // Fade out as scroll progresses (for hero mode)
-        const opacityMultiplier = p.isAmbient ? 1 - scrollProgress * 0.5 : 1 - scrollProgress * 0.8;
-        drawTriangle(p.x, p.y, p.size, p.rotation, p.color, p.opacity * opacityMultiplier);
+          // Opacity: full at scroll 0, fades to ambient level as dispersed
+          // After full dispersion, particles remain visible at low opacity behind content
+          const dispersedOpacity = 0.08 + (1 - Math.min(1, scrollProgress)) * 0.4;
+          const finalOpacity = p.opacity * (scrollProgress > 0.05 ? dispersedOpacity : 1);
+
+          drawTriangle(p.x, p.y, p.size, p.rotation, p.color, finalOpacity);
+        }
       }
 
       animationId = requestAnimationFrame(animate);
     }
 
-    // Track scroll progress internally if no external ref provided
     function handleScroll() {
       const scrollY = window.scrollY;
       const heroHeight = window.innerHeight;
@@ -245,7 +230,20 @@ export function ParticleConstellation({
       window.removeEventListener("resize", resize);
       window.removeEventListener("scroll", handleScroll);
     };
-  }, [mode, scrollProgressRef]);
+  }, [scrollProgressRef]);
 
-  return <canvas ref={canvasRef} className={className} style={{ width: "100%", height: "100%" }} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className={className}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        pointerEvents: "none",
+      }}
+    />
+  );
 }
