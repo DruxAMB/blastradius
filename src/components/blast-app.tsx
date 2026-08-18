@@ -288,9 +288,10 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 overflow-hidden px-8 pb-6">
+        <div className="max-w-[1280px] mx-auto h-full flex overflow-hidden">
         {/* Graph canvas — pure black void */}
-        <div ref={graphContainerRef} className="flex-1 relative bg-black pl-8">
+        <div ref={graphContainerRef} className="flex-1 relative bg-black">
           {!blastResult && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-[#444]">
               <p className="text-[18px] font-light text-[#666]">Search for a package to visualize its blast radius</p>
@@ -307,7 +308,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
           {blastResult && (
             <>
               {/* Summary — floating text, no container */}
-              <div className="absolute top-4 left-4 right-4 z-10 flex items-center gap-6 text-[14px]">
+              <div className="absolute top-4 left-0 right-0 z-10 flex items-center gap-6 text-[14px]">
                 <span className="text-[#8052ff] font-semibold">{blastResult.package}</span>
                 <span className="text-[#333]">·</span>
                 <span className="text-[#bdbdbd]">
@@ -382,7 +383,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
               />
 
               {/* Legend — floating, no container */}
-              <div className="absolute bottom-4 left-4 text-[12px] flex items-center gap-4">
+              <div className="absolute bottom-4 left-0 text-[12px] flex items-center gap-4">
                 <span className="text-[#666] uppercase tracking-[0.025em]">Distance</span>
                 {[0, 1, 2, 3].map((d) => (
                   <span key={d} className="flex items-center gap-1.5">
@@ -410,6 +411,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
             {activeTab === "maintainers" && <MaintainersTab maintainers={maintainers} loading={tabLoading} packageName={blastResult?.package} />}
             {activeTab === "typosquat" && <TyposquatTab candidates={typosquats} loading={tabLoading} packageName={blastResult?.package} />}
           </div>
+        </div>
         </div>
       </div>
     </div>
