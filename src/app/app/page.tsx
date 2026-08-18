@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Search, AlertTriangle, Users, Type, Loader2, Zap, Shield, GitBranch, ExternalLink } from "lucide-react";
+import { Search, AlertTriangle, Users, Type, Loader2, ArrowLeft, Zap } from "lucide-react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 
-// react-force-graph-2d is canvas-based and must be dynamically imported (no SSR)
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
   loading: () => (
-    <div className="flex items-center justify-center h-full text-zinc-500">
-      <Loader2 className="w-6 h-6 animate-spin" />
+    <div className="flex items-center justify-center h-full text-[#9a9a9a]">
+      <Loader2 className="w-5 h-5 animate-spin" />
     </div>
   ),
 });
@@ -57,15 +57,25 @@ interface TyposquatCandidate {
 
 type Tab = "blast" | "maintainers" | "typosquat";
 
-// Color by distance from compromised package
-const DISTANCE_COLORS = ["#ef4444", "#f97316", "#eab308", "#84cc16", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899", "#f43f5e"];
+// Dala color palette
+const DISTANCE_COLORS = [
+  "#8052ff", // 0 — electric iris (source/compromised)
+  "#ffb829", // 1 — saffron spark
+  "#15846e", // 2 — deep verdant
+  "#ff6b9d", // 3 — magenta
+  "#5b9eff", // 4 — blue
+  "#a78bfa", // 5 — light violet
+  "#fbbf24", // 6 — amber
+  "#34d399", // 7 — teal
+  "#8052ff", // 8
+  "#ffb829", // 9
+];
 
 function colorForDistance(d: number): string {
-  if (d === 0) return "#ef4444"; // red for compromised package
   return DISTANCE_COLORS[Math.min(d, DISTANCE_COLORS.length - 1)];
 }
 
-export default function Home() {
+export default function AppPage() {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<{ name: string; id: number; description: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -77,20 +87,16 @@ export default function Home() {
   const [maintainers, setMaintainers] = useState<SharedMaintainer[]>([]);
   const [typosquats, setTyposquats] = useState<TyposquatCandidate[]>([]);
   const [tabLoading, setTabLoading] = useState(false);
-  const graphRef = useRef<{ centerAt: (x: number, y: number, ms: number) => void; zoom: (z: number, ms: number) => void } | undefined>(undefined);
+  const graphRef = useRef<{ zoom: (z: number, ms: number) => void } | undefined>(undefined);
   const graphContainerRef = useRef<HTMLDivElement>(null);
   const [graphDimensions, setGraphDimensions] = useState({ width: 800, height: 600 });
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // Responsive graph sizing
   useEffect(() => {
     const updateDimensions = () => {
       if (graphContainerRef.current) {
         const rect = graphContainerRef.current.getBoundingClientRect();
-        setGraphDimensions({
-          width: rect.width,
-          height: rect.height,
-        });
+        setGraphDimensions({ width: rect.width, height: rect.height });
       }
     };
     updateDimensions();
@@ -98,18 +104,15 @@ export default function Home() {
     return () => window.removeEventListener("resize", updateDimensions);
   }, []);
 
-  // Debounced search for autocomplete
   const handleSearchChange = useCallback((value: string) => {
     setQuery(value);
     setShowSuggestions(true);
     setSelectedNode(null);
-
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     if (!value.trim()) {
       setSuggestions([]);
       return;
     }
-
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(value)}`);
@@ -124,27 +127,21 @@ export default function Home() {
   const calculateBlastRadius = useCallback(async (packageName?: string) => {
     const name = packageName ?? query.trim();
     if (!name) return;
-
     setLoading(true);
     setError(null);
     setShowSuggestions(false);
     setSelectedNode(null);
     setActiveTab("blast");
-
     try {
       const res = await fetch(`/api/blast-radius?package=${encodeURIComponent(name)}`);
       const data = await res.json();
-
       if (!res.ok) {
         setError(data.error ?? "Failed to compute blast radius");
         setBlastResult(null);
       } else {
         setBlastResult(data);
-        // Center the graph after it renders
         setTimeout(() => {
-          if (graphRef.current) {
-            graphRef.current.zoom(1.5, 300);
-          }
+          if (graphRef.current) graphRef.current.zoom(1.5, 300);
         }, 100);
       }
     } catch {
@@ -155,7 +152,6 @@ export default function Home() {
     }
   }, [query]);
 
-  // Load tab data when tab changes
   useEffect(() => {
     if (!blastResult) return;
     if (activeTab === "maintainers" && maintainers.length === 0) {
@@ -175,13 +171,11 @@ export default function Home() {
     }
   }, [activeTab, blastResult, maintainers.length, typosquats.length]);
 
-  // Reset tab data when package changes
   useEffect(() => {
     setMaintainers([]);
     setTyposquats([]);
   }, [blastResult?.package]);
 
-  // Prepare graph data for react-force-graph-2d
   const graphData = blastResult
     ? {
         nodes: blastResult.nodes.map((n) => ({
@@ -195,48 +189,37 @@ export default function Home() {
         links: blastResult.links.map((l) => ({
           source: l.source,
           target: l.target,
-          color: "#3f3f46",
+          color: "#222",
         })),
       }
     : { nodes: [], links: [] };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-white" fill="white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold tracking-tight">BlastRadius</h1>
-              <p className="text-xs text-zinc-500 -mt-0.5">Supply chain blast radius, powered by HydraDB</p>
-            </div>
+    <div className="flex flex-col h-screen overflow-hidden bg-black text-white">
+      {/* Header — minimal, transparent on black */}
+      <header className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center gap-6">
+          <Link href="/" className="flex items-center gap-2 text-[#9a9a9a] hover:text-white transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-[14px] font-semibold tracking-[0.025em] uppercase">Back</span>
+          </Link>
+          <div className="flex items-center gap-2.5">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M10 2L18 16H2L10 2Z" stroke="#8052ff" strokeWidth="1.5" />
+            </svg>
+            <span className="text-[14px] font-semibold tracking-[0.025em] uppercase">BlastRadius</span>
           </div>
         </div>
-        <div className="flex items-center gap-4 text-xs text-zinc-500">
-          <span className="flex items-center gap-1">
-            <GitBranch className="w-3.5 h-3.5" />
-            npm dependency graph
-          </span>
-          <a
-            href="https://github.com/hydra-db/hydradb"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 hover:text-zinc-300 transition-colors"
-          >
-            HydraDB OSS
-            <ExternalLink className="w-3 h-3" />
-          </a>
+        <div className="text-[12px] text-[#9a9a9a] uppercase tracking-[0.025em]">
+          npm dependency graph
         </div>
       </header>
 
-      {/* Search bar */}
-      <div className="relative px-6 py-4 border-b border-zinc-800 bg-zinc-900/30">
-        <div className="flex gap-2 max-w-2xl mx-auto">
+      {/* Search — no container, floating on black */}
+      <div className="px-6 pb-6">
+        <div className="flex gap-3 max-w-[640px] mx-auto">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9a9a]" />
             <input
               type="text"
               value={query}
@@ -245,10 +228,10 @@ export default function Home() {
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               placeholder="Enter a compromised package name..."
-              className="w-full pl-10 pr-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 transition-colors"
+              className="w-full pl-10 pr-4 py-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-[24px] text-[15px] text-white placeholder-[#666] focus:outline-none focus:border-[#8052ff] transition-colors"
             />
             {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-[#0a0a0a] border border-[#1a1a1a] rounded-[24px] z-50 max-h-64 overflow-y-auto overflow-hidden">
                 {suggestions.map((s) => (
                   <button
                     key={s.id}
@@ -256,11 +239,11 @@ export default function Home() {
                       setQuery(s.name);
                       calculateBlastRadius(s.name);
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-zinc-700 transition-colors border-b border-zinc-700/50 last:border-0"
+                    className="w-full text-left px-5 py-3 hover:bg-[#111] transition-colors"
                   >
-                    <div className="text-sm font-medium text-zinc-100">{s.name}</div>
+                    <div className="text-[15px] text-white">{s.name}</div>
                     {s.description && (
-                      <div className="text-xs text-zinc-500 truncate">{s.description}</div>
+                      <div className="text-[12px] text-[#9a9a9a] truncate mt-0.5">{s.description}</div>
                     )}
                   </button>
                 ))}
@@ -270,88 +253,78 @@ export default function Home() {
           <button
             onClick={() => calculateBlastRadius()}
             disabled={loading || !query.trim()}
-            className="px-5 py-2.5 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm rounded-lg transition-all flex items-center gap-2 shadow-lg shadow-red-500/20"
+            className="btn-violet disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Computing...
+                Computing
               </>
             ) : (
               <>
-                <AlertTriangle className="w-4 h-4" />
-                Calculate Blast Radius
+                <Zap className="w-4 h-4" />
+                Blast Radius
               </>
             )}
           </button>
         </div>
       </div>
 
-      {/* Error message */}
+      {/* Error — minimal text on black */}
       {error && (
-        <div className="px-6 py-3 bg-red-950/50 border-b border-red-900/50">
-          <div className="max-w-4xl mx-auto flex items-center gap-2 text-sm text-red-300">
+        <div className="px-6 pb-4">
+          <div className="max-w-[640px] mx-auto flex items-center gap-2 text-[14px] text-[#ffb829]">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
         </div>
       )}
 
-      {/* Main content area */}
+      {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Graph canvas */}
-        <div
-          ref={graphContainerRef}
-          className="flex-1 relative bg-zinc-950"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, rgba(63, 63, 70, 0.3) 1px, transparent 0)",
-            backgroundSize: "24px 24px",
-          }}
-        >
+        {/* Graph canvas — pure black void */}
+        <div ref={graphContainerRef} className="flex-1 relative bg-black">
           {!blastResult && !loading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-600">
-              <Shield className="w-16 h-16 mb-4 opacity-20" />
-              <p className="text-lg font-medium text-zinc-500">Search for a package to visualize its blast radius</p>
-              <p className="text-sm text-zinc-600 mt-1">Try: es-errors, chalk, debug, accepts, mime-db</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-[#444]">
+              <p className="text-[18px] font-light text-[#666]">Search for a package to visualize its blast radius</p>
+              <p className="text-[14px] text-[#444] mt-2">Try: es-errors, chalk, debug, accepts, mime-db</p>
             </div>
           )}
           {loading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-500 bg-zinc-950/80 z-10">
-              <Loader2 className="w-8 h-8 animate-spin mb-3" />
-              <p className="text-sm">Traversing the dependency graph...</p>
-              <p className="text-xs text-zinc-600 mt-1">Running Cypher path procedure on HydraDB</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
+              <Loader2 className="w-6 h-6 animate-spin mb-4 text-[#8052ff]" />
+              <p className="text-[14px] text-[#9a9a9a]">Traversing the dependency graph...</p>
+              <p className="text-[12px] text-[#555] mt-1">Running Cypher path procedure on HydraDB</p>
             </div>
           )}
           {blastResult && (
             <>
-              {/* Summary bar */}
-              <div className="absolute top-4 left-4 right-4 z-10 flex items-center gap-4 px-4 py-2.5 bg-zinc-900/80 backdrop-blur rounded-lg border border-zinc-800 text-sm">
-                <span className="font-medium text-red-400">{blastResult.package}</span>
-                <span className="text-zinc-600">|</span>
-                <span className="text-zinc-300">
-                  <span className="font-bold text-white">{blastResult.summary.totalPackages}</span> packages affected
+              {/* Summary — floating text, no container */}
+              <div className="absolute top-4 left-4 right-4 z-10 flex items-center gap-6 text-[14px]">
+                <span className="text-[#8052ff] font-semibold">{blastResult.package}</span>
+                <span className="text-[#333]">·</span>
+                <span className="text-[#bdbdbd]">
+                  <span className="text-white font-semibold">{blastResult.summary.totalPackages}</span> affected
                 </span>
-                <span className="text-zinc-600">|</span>
-                <span className="text-zinc-300">
-                  <span className="font-bold text-orange-400">{blastResult.summary.directDependents}</span> direct
+                <span className="text-[#333]">·</span>
+                <span className="text-[#bdbdbd]">
+                  <span className="text-[#ffb829] font-semibold">{blastResult.summary.directDependents}</span> direct
                 </span>
-                <span className="text-zinc-600">|</span>
-                <span className="text-zinc-300">
-                  <span className="font-bold text-yellow-400">{blastResult.summary.transitiveDependents}</span> transitive
+                <span className="text-[#333]">·</span>
+                <span className="text-[#bdbdbd]">
+                  <span className="text-white font-semibold">{blastResult.summary.transitiveDependents}</span> transitive
                 </span>
-                <span className="text-zinc-600">|</span>
-                <span className="text-zinc-300">
-                  max depth: <span className="font-bold text-white">{blastResult.summary.maxDepth}</span>
+                <span className="text-[#333]">·</span>
+                <span className="text-[#bdbdbd]">
+                  depth <span className="text-white font-semibold">{blastResult.summary.maxDepth}</span>
                 </span>
                 {blastResult.summary.deprecated && (
-                  <span className="px-2 py-0.5 bg-red-950 text-red-400 rounded text-xs font-medium border border-red-900">
-                    DEPRECATED
+                  <span className="text-[#ffb829] text-[12px] uppercase tracking-[0.025em] font-semibold">
+                    Deprecated
                   </span>
                 )}
               </div>
 
-              {/* Force graph */}
               <ForceGraph2D
                 ref={graphRef as never}
                 graphData={graphData}
@@ -378,28 +351,22 @@ export default function Home() {
                   const name = node.name as string;
                   const distance = node.distance as number;
                   const val = node.val as number;
-
-                  // Draw node circle
                   ctx.fillStyle = color;
                   ctx.beginPath();
                   ctx.arc(x, y, 5 + (val - 1) * 2, 0, 2 * Math.PI);
                   ctx.fill();
-
-                  // Draw glow for source node
                   if (distance === 0) {
                     ctx.shadowColor = color;
-                    ctx.shadowBlur = 15;
+                    ctx.shadowBlur = 20;
                     ctx.fill();
                     ctx.shadowBlur = 0;
                   }
-
-                  // Draw label (only when zoomed in enough)
                   if (globalScale > 1.5) {
-                    ctx.font = `${10 / globalScale}px sans-serif`;
+                    ctx.font = `${10 / globalScale}px Inter, sans-serif`;
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
-                    ctx.fillStyle = "#e4e4e7";
-                    ctx.fillText(name, x, y + 12 / globalScale);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillText(name, x, y + 14 / globalScale);
                   }
                 }}
                 cooldownTicks={100}
@@ -407,45 +374,34 @@ export default function Home() {
                 height={graphDimensions.height}
               />
 
-              {/* Legend */}
-              <div className="absolute bottom-4 left-4 px-4 py-2 bg-zinc-900/80 backdrop-blur rounded-lg border border-zinc-800 text-xs">
-                <div className="flex items-center gap-3">
-                  <span className="text-zinc-500">Distance:</span>
-                  {[0, 1, 2, 3].map((d) => (
-                    <span key={d} className="flex items-center gap-1">
-                      <span
-                        className="w-3 h-3 rounded-full"
-                        style={{ background: colorForDistance(d) }}
-                      />
-                      <span className="text-zinc-400">{d === 0 ? "source" : `${d} hop${d > 1 ? "s" : ""}`}</span>
-                    </span>
-                  ))}
-                </div>
+              {/* Legend — floating, no container */}
+              <div className="absolute bottom-4 left-4 text-[12px] flex items-center gap-4">
+                <span className="text-[#666] uppercase tracking-[0.025em]">Distance</span>
+                {[0, 1, 2, 3].map((d) => (
+                  <span key={d} className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full" style={{ background: colorForDistance(d) }} />
+                    <span className="text-[#9a9a9a]">{d === 0 ? "source" : `${d} hop${d > 1 ? "s" : ""}`}</span>
+                  </span>
+                ))}
               </div>
             </>
           )}
         </div>
 
-        {/* Side panel */}
-        <div className="w-96 border-l border-zinc-800 bg-zinc-900/50 flex flex-col overflow-hidden">
-          {/* Tabs */}
-          <div className="flex border-b border-zinc-800">
-            <TabButton active={activeTab === "blast"} onClick={() => setActiveTab("blast")} icon={<AlertTriangle className="w-3.5 h-3.5" />} label="Blast Radius" />
-            <TabButton active={activeTab === "maintainers"} onClick={() => setActiveTab("maintainers")} icon={<Users className="w-3.5 h-3.5" />} label="Maintainers" />
-            <TabButton active={activeTab === "typosquat"} onClick={() => setActiveTab("typosquat")} icon={<Type className="w-3.5 h-3.5" />} label="Typosquat" />
+        {/* Side panel — no border, no card, floating on black */}
+        <div className="w-[400px] bg-black flex flex-col overflow-hidden">
+          {/* Tabs — ghost text, no container */}
+          <div className="flex px-6 py-4 gap-6">
+            <TabButton active={activeTab === "blast"} onClick={() => setActiveTab("blast")} label="Blast Radius" />
+            <TabButton active={activeTab === "maintainers"} onClick={() => setActiveTab("maintainers")} label="Maintainers" />
+            <TabButton active={activeTab === "typosquat"} onClick={() => setActiveTab("typosquat")} label="Typosquat" />
           </div>
 
-          {/* Tab content */}
-          <div className="flex-1 overflow-y-auto p-4">
-            {activeTab === "blast" && (
-              <BlastTab selectedNode={selectedNode} blastResult={blastResult} />
-            )}
-            {activeTab === "maintainers" && (
-              <MaintainersTab maintainers={maintainers} loading={tabLoading} packageName={blastResult?.package} />
-            )}
-            {activeTab === "typosquat" && (
-              <TyposquatTab candidates={typosquats} loading={tabLoading} packageName={blastResult?.package} />
-            )}
+          {/* Tab content — floating on black */}
+          <div className="flex-1 overflow-y-auto px-6 pb-6">
+            {activeTab === "blast" && <BlastTab selectedNode={selectedNode} blastResult={blastResult} />}
+            {activeTab === "maintainers" && <MaintainersTab maintainers={maintainers} loading={tabLoading} packageName={blastResult?.package} />}
+            {activeTab === "typosquat" && <TyposquatTab candidates={typosquats} loading={tabLoading} packageName={blastResult?.package} />}
           </div>
         </div>
       </div>
@@ -453,17 +409,14 @@ export default function Home() {
   );
 }
 
-function TabButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <button
       onClick={onClick}
-      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors border-b-2 ${
-        active
-          ? "text-zinc-100 border-red-500 bg-zinc-800/50"
-          : "text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-zinc-800/30"
+      className={`text-[14px] font-semibold tracking-[0.025em] uppercase transition-colors ${
+        active ? "text-white" : "text-[#555] hover:text-[#9a9a9a]"
       }`}
     >
-      {icon}
       {label}
     </button>
   );
@@ -471,53 +424,49 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
 
 function BlastTab({ selectedNode, blastResult }: { selectedNode: BlastNode | null; blastResult: BlastRadiusResult | null }) {
   if (!blastResult) {
-    return <div className="text-zinc-600 text-sm text-center mt-8">No blast radius computed yet</div>;
+    return <div className="text-[#444] text-[14px] mt-12 text-center font-light">No blast radius computed yet</div>;
   }
 
   if (selectedNode) {
     return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <div
-            className="w-3 h-3 rounded-full"
-            style={{ background: colorForDistance(selectedNode.distance) }}
-          />
-          <h3 className="text-sm font-bold text-zinc-100">{selectedNode.name}</h3>
+      <div className="space-y-5 mt-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ background: colorForDistance(selectedNode.distance) }} />
+          <h3 className="text-[27px] font-normal tracking-[-0.02em]">{selectedNode.name}</h3>
         </div>
         {selectedNode.description && (
-          <p className="text-xs text-zinc-400">{selectedNode.description}</p>
+          <p className="text-[18px] font-light text-[#bdbdbd] leading-[1.5]">{selectedNode.description}</p>
         )}
-        <div className="space-y-2 pt-2">
-          <div className="flex justify-between text-xs">
-            <span className="text-zinc-500">Distance from source</span>
-            <span className="font-medium text-zinc-200">
+        <div className="space-y-3 pt-2">
+          <div className="flex justify-between text-[14px]">
+            <span className="text-[#666]">Distance from source</span>
+            <span className="text-white">
               {selectedNode.distance === 0 ? "Source (compromised)" : `${selectedNode.distance} hop${selectedNode.distance > 1 ? "s" : ""}`}
             </span>
           </div>
-          <div className="flex justify-between text-xs">
-            <span className="text-zinc-500">Package ID</span>
-            <span className="font-mono text-zinc-400">{selectedNode.id}</span>
+          <div className="flex justify-between text-[14px]">
+            <span className="text-[#666]">Package ID</span>
+            <span className="font-mono text-[#9a9a9a]">{selectedNode.id}</span>
           </div>
         </div>
         {selectedNode.distance > 0 && (
-          <div className="pt-2 px-3 py-2 bg-orange-950/30 border border-orange-900/30 rounded text-xs text-orange-300">
-            <AlertTriangle className="w-3 h-3 inline mr-1" />
+          <p className="text-[14px] text-[#ffb829] font-light pt-2">
             This package is {selectedNode.distance} hop{selectedNode.distance > 1 ? "s" : ""} away from the compromised package.
-          </div>
+          </p>
         )}
       </div>
     );
   }
 
-  // Default: show blast radius summary
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 mt-4">
       <div>
-        <h3 className="text-sm font-bold text-zinc-100 mb-1">Blast Radius Analysis</h3>
-        <p className="text-xs text-zinc-500">Click a node in the graph to see details</p>
+        <div className="text-amber-label mb-3">Analysis</div>
+        <h3 className="text-[27px] font-normal tracking-[-0.02em] mb-2">Blast Radius</h3>
+        <p className="text-[14px] text-[#666]">Click a node in the graph to see details</p>
       </div>
-      <div className="space-y-2">
-        <StatRow label="Compromised package" value={blastResult.package} highlight />
+      <div className="space-y-3">
+        <StatRow label="Compromised package" value={blastResult.package} accent />
         <StatRow label="Total packages affected" value={blastResult.summary.totalPackages.toString()} />
         <StatRow label="Direct dependents" value={blastResult.summary.directDependents.toString()} />
         <StatRow label="Transitive dependents" value={blastResult.summary.transitiveDependents.toString()} />
@@ -525,23 +474,27 @@ function BlastTab({ selectedNode, blastResult }: { selectedNode: BlastNode | nul
       </div>
       {blastResult.description && (
         <div className="pt-2">
-          <p className="text-xs text-zinc-500 mb-1">Description</p>
-          <p className="text-xs text-zinc-400">{blastResult.description}</p>
+          <div className="text-[12px] text-[#666] uppercase tracking-[0.025em] mb-2">Description</div>
+          <p className="text-[18px] font-light text-[#bdbdbd] leading-[1.5]">{blastResult.description}</p>
         </div>
       )}
-      <div className="pt-2 px-3 py-2 bg-zinc-800/50 rounded text-xs text-zinc-400">
-        <p className="font-medium text-zinc-300 mb-1">How this works</p>
-        <p>The blast radius is computed by HydraDB&apos;s native path procedure <code className="text-orange-400">algo.SSpaths</code> traversing incoming <code className="text-orange-400">DEPENDS_ON</code> edges. This is a graph traversal — the question a vector database cannot answer.</p>
+      <div className="pt-4">
+        <div className="text-amber-label mb-2">How this works</div>
+        <p className="text-[14px] font-light text-[#9a9a9a] leading-[1.6]">
+          Computed by HydraDB&apos;s native path procedure <span className="text-[#8052ff]">algo.SSpaths</span> traversing
+          incoming <span className="text-[#8052ff]">DEPENDS_ON</span> edges. This is a graph traversal — the question a
+          vector database cannot answer.
+        </p>
       </div>
     </div>
   );
 }
 
-function StatRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function StatRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="flex justify-between items-center text-xs">
-      <span className="text-zinc-500">{label}</span>
-      <span className={`font-medium ${highlight ? "text-red-400" : "text-zinc-200"}`}>{value}</span>
+    <div className="flex justify-between items-center text-[14px]">
+      <span className="text-[#666]">{label}</span>
+      <span className={accent ? "text-[#8052ff] font-semibold" : "text-white font-semibold"}>{value}</span>
     </div>
   );
 }
@@ -549,46 +502,43 @@ function StatRow({ label, value, highlight }: { label: string; value: string; hi
 function MaintainersTab({ maintainers, loading, packageName }: { maintainers: SharedMaintainer[]; loading: boolean; packageName?: string }) {
   if (loading) {
     return (
-      <div className="flex items-center justify-center text-zinc-500 text-sm mt-8">
+      <div className="flex items-center justify-center text-[#666] text-[14px] mt-12">
         <Loader2 className="w-4 h-4 animate-spin mr-2" />
         Finding shared maintainers...
       </div>
     );
   }
-
   if (!packageName) {
-    return <div className="text-zinc-600 text-sm text-center mt-8">Search for a package first</div>;
+    return <div className="text-[#444] text-[14px] mt-12 text-center font-light">Search for a package first</div>;
   }
-
   if (maintainers.length === 0) {
     return (
-      <div className="text-zinc-600 text-sm text-center mt-8">
-        <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+      <div className="text-[#444] text-[14px] mt-12 text-center font-light">
         No shared maintainers found
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-8 mt-4">
       <div>
-        <h3 className="text-sm font-bold text-zinc-100 mb-1">Shared Maintainer Risk</h3>
-        <p className="text-xs text-zinc-500">
-          If a maintainer of <span className="text-zinc-300">{packageName}</span> is compromised, these packages are also at risk.
+        <div className="text-amber-label mb-3">Shared Risk</div>
+        <h3 className="text-[27px] font-normal tracking-[-0.02em] mb-2">Maintainer Risk</h3>
+        <p className="text-[14px] font-light text-[#9a9a9a] leading-[1.5]">
+          If a maintainer of <span className="text-white">{packageName}</span> is compromised, these packages are also at risk.
         </p>
       </div>
       {maintainers.map((m) => (
-        <div key={m.id} className="p-3 bg-zinc-800/50 rounded-lg border border-zinc-800">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-zinc-100">{m.name}</span>
-            <span className="px-2 py-0.5 bg-orange-950/50 text-orange-400 rounded text-xs font-medium">
+        <div key={m.id}>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[18px] font-normal text-white">{m.name}</span>
+            <span className="text-[12px] text-[#ffb829] uppercase tracking-[0.025em] font-semibold">
               {m.packages.length} package{m.packages.length > 1 ? "s" : ""}
             </span>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {m.packages.map((p) => (
-              <div key={p.id} className="text-xs text-zinc-400 flex items-center gap-1.5">
-                <span className="w-1 h-1 rounded-full bg-zinc-600" />
+              <div key={p.id} className="text-[14px] text-[#9a9a9a] font-light">
                 {p.name}
               </div>
             ))}
@@ -602,54 +552,45 @@ function MaintainersTab({ maintainers, loading, packageName }: { maintainers: Sh
 function TyposquatTab({ candidates, loading, packageName }: { candidates: TyposquatCandidate[]; loading: boolean; packageName?: string }) {
   if (loading) {
     return (
-      <div className="flex items-center justify-center text-zinc-500 text-sm mt-8">
+      <div className="flex items-center justify-center text-[#666] text-[14px] mt-12">
         <Loader2 className="w-4 h-4 animate-spin mr-2" />
         Scanning for typosquats...
       </div>
     );
   }
-
   if (!packageName) {
-    return <div className="text-zinc-600 text-sm text-center mt-8">Search for a package first</div>;
+    return <div className="text-[#444] text-[14px] mt-12 text-center font-light">Search for a package first</div>;
   }
-
   if (candidates.length === 0) {
     return (
-      <div className="text-zinc-600 text-sm text-center mt-8">
-        <Type className="w-8 h-8 mx-auto mb-2 opacity-30" />
+      <div className="text-[#444] text-[14px] mt-12 text-center font-light">
         No typosquat candidates found
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6 mt-4">
       <div>
-        <h3 className="text-sm font-bold text-zinc-100 mb-1">Typosquat Detection</h3>
-        <p className="text-xs text-zinc-500">
-          Packages with names similar to <span className="text-zinc-300">{packageName}</span>. These could be typosquat attempts.
+        <div className="text-amber-label mb-3">Detection</div>
+        <h3 className="text-[27px] font-normal tracking-[-0.02em] mb-2">Typosquat Scan</h3>
+        <p className="text-[14px] font-light text-[#9a9a9a] leading-[1.5]">
+          Packages with names similar to <span className="text-white">{packageName}</span>. These could be typosquat attempts.
         </p>
       </div>
       {candidates.map((c) => (
-        <div
-          key={c.id}
-          className={`p-3 rounded-lg border ${
-            c.suspicious
-              ? "bg-red-950/30 border-red-900/50"
-              : "bg-zinc-800/50 border-zinc-800"
-          }`}
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-medium text-zinc-100">{c.name}</span>
+        <div key={c.id}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[18px] font-normal text-white">{c.name}</span>
             {c.suspicious && (
-              <span className="px-2 py-0.5 bg-red-950 text-red-400 rounded text-xs font-medium border border-red-900">
-                SUSPICIOUS
+              <span className="text-[12px] text-[#ffb829] uppercase tracking-[0.025em] font-semibold">
+                Suspicious
               </span>
             )}
           </div>
-          <div className="flex gap-4 text-xs text-zinc-500">
-            <span>Edit distance: <span className="text-zinc-300">{c.editDistance}</span></span>
-            <span>Length diff: <span className="text-zinc-300">{c.lengthDiff}</span></span>
+          <div className="flex gap-6 text-[12px] text-[#666]">
+            <span>Edit distance: <span className="text-[#bdbdbd]">{c.editDistance}</span></span>
+            <span>Length diff: <span className="text-[#bdbdbd]">{c.lengthDiff}</span></span>
           </div>
         </div>
       ))}
