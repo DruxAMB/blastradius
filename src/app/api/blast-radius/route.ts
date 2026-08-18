@@ -36,8 +36,9 @@ export async function GET(request: NextRequest) {
     const deprecated = propValue(idResult.rows[0][2] as { String?: string }) as string;
 
     // 2. Compute blast radius using path procedure (incoming DEPENDS_ON edges)
+    // pathCount: 200 ensures we get all paths (default is too low for large graphs)
     const blastResult = await cypher(
-      "CALL algo.SSpaths({sourceNode: $pkgId, relTypes: ['DEPENDS_ON'], relDirection: 'incoming', maxLen: 10}) YIELD path RETURN path",
+      "CALL algo.SSpaths({sourceNode: $pkgId, relTypes: ['DEPENDS_ON'], relDirection: 'incoming', maxLen: 10, pathCount: 200}) YIELD path RETURN path",
       { pkgId: packageId },
     );
 

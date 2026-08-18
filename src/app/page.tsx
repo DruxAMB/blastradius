@@ -78,7 +78,25 @@ export default function Home() {
   const [typosquats, setTyposquats] = useState<TyposquatCandidate[]>([]);
   const [tabLoading, setTabLoading] = useState(false);
   const graphRef = useRef<{ centerAt: (x: number, y: number, ms: number) => void; zoom: (z: number, ms: number) => void } | undefined>(undefined);
+  const graphContainerRef = useRef<HTMLDivElement>(null);
+  const [graphDimensions, setGraphDimensions] = useState({ width: 800, height: 600 });
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // Responsive graph sizing
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (graphContainerRef.current) {
+        const rect = graphContainerRef.current.getBoundingClientRect();
+        setGraphDimensions({
+          width: rect.width,
+          height: rect.height,
+        });
+      }
+    };
+    updateDimensions();
+    window.addEventListener("resize", updateDimensions);
+    return () => window.removeEventListener("resize", updateDimensions);
+  }, []);
 
   // Debounced search for autocomplete
   const handleSearchChange = useCallback((value: string) => {
@@ -282,12 +300,12 @@ export default function Home() {
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Graph canvas */}
-        <div className="flex-1 relative bg-zinc-950">
+        <div ref={graphContainerRef} className="flex-1 relative bg-zinc-950">
           {!blastResult && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-600">
               <Shield className="w-16 h-16 mb-4 opacity-20" />
               <p className="text-lg font-medium text-zinc-500">Search for a package to visualize its blast radius</p>
-              <p className="text-sm text-zinc-600 mt-1">Try: left-pad, mime-db, debug, lodash</p>
+              <p className="text-sm text-zinc-600 mt-1">Try: es-errors, chalk, debug, accepts, mime-db</p>
             </div>
           )}
           {loading && (
@@ -346,8 +364,8 @@ export default function Home() {
                   });
                 }}
                 cooldownTicks={100}
-                width={800}
-                height={600}
+                width={graphDimensions.width}
+                height={graphDimensions.height}
               />
 
               {/* Legend */}
