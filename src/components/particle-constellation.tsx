@@ -3,12 +3,13 @@
 import { useEffect, useRef } from "react";
 
 /**
- * Particle Constellation — Dala-style signature visual.
+ * Particle Constellation — 3D tetrahedron of triangular particles.
  *
- * Fixed full-viewport canvas that sits behind all content.
- * Particles start as a brain-shape cluster (hero) and disperse
- * as the user scrolls, remaining visible as ambient background
- * behind all subsequent sections.
+ * Fixed full-viewport canvas behind all content.
+ * Particles are distributed on the faces of a 3D tetrahedron,
+ * which slowly rotates. Projected to 2D with perspective so
+ * depth is visible (far particles = smaller, dimmer).
+ * Disperses on scroll, reacts to mouse hover.
  */
 export function ParticleConstellation({
   className,
@@ -30,29 +31,28 @@ export function ParticleConstellation({
     let width = 0;
     let height = 0;
 
-    // Mouse tracking for repulsion interaction
+    // Mouse tracking for repulsion
     const mouse = { x: -9999, y: -9999, active: false };
     const repelRadius = 120;
     const repelStrength = 2.5;
 
     const colors = [
-      "#8052ff", // electric iris
-      "#ffb829", // saffron spark
-      "#15846e", // deep verdant
-      "#ff6b9d", // magenta
-      "#5b9eff", // blue
-      "#a78bfa", // light violet
-      "#fbbf24", // amber
-      "#34d399", // teal
+      "#8052ff", "#ffb829", "#15846e", "#ff6b9d",
+      "#5b9eff", "#a78bfa", "#fbbf24", "#34d399",
     ];
 
-    interface Particle {
+    // 3D particle — lives on a tetrahedron face, gets projected to 2D each frame
+    interface Particle3D {
+      // 3D base position on tetrahedron (unit space, before scale/rotation)
+      bx: number; // base 3D coords
+      by: number;
+      bz: number;
+      // Current 2D screen position (computed each frame)
       x: number;
       y: number;
-      baseX: number;
-      baseY: number;
-      vx: number;
-      vy: number;
+      // Screen-space offset for scatter/mouse interaction
+      ox: number; // offset x
+      oy: number; // offset y
       size: number;
       color: string;
       opacity: number;
@@ -63,7 +63,67 @@ export function ParticleConstellation({
       scatterSpeed: number;
     }
 
-    let particles: Particle[] = [];
+    let particles: Particle3D[] = [];
+
+    // Tetrahedron vertices (regular, centered at origin)
+    const tetraVertices = [
+      [1, 1, 1],
+      [1, -1, -1],
+      [-1, 1, -1],
+      [-1, -1, 1],
+    ];
+
+    // The 4 faces (each is 3 vertex indices)
+    const tetraFaces = [
+      [0, 1, 2],
+      [0, 1, 3],
+      [0, 2, 3],
+      [1, 2, 3],
+    ];
+
+    // Random point on a triangle face using barycentric coordinates
+    function randomPointOnFace(face: number[]): [number, number, number] {
+      const [a, b, c] = face;
+      const v0 = tetraVertices[a];
+      const v1 = tetraVertices[b];
+      const v2 = tetraVertices[c];
+      let r1 = Math.random();
+      let r2 = Math.random();
+      if (r1 + r2 > 1) {
+        r1 = 1 - r1;
+        r2 = 1 - r2;
+      }
+      const r3 = 1 - r1 - r2;
+      return [
+        v0[0] * r1 + v1[0] * r2 + v2[0] * r3,
+        v0[1] * r1 + v1[1] * r2 + v2[1] * r3,
+        v0[2] * r1 + v1[2] * r2 + v2[2] * r3,
+      ];
+    }
+
+    // 3D rotation matrices
+    function rotateY(x: number, y: number, z: number, angle: number): [number, number, number] {
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      return [x * cos + z * sin, y, -x * sin + z * cos];
+    }
+
+    function rotateX(x: number, y: number, z: number, angle: number): [number, number, number] {
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      return [x, y * cos - z * sin, y * sin + z * cos];
+    }
+
+    // Perspective projection
+    const fov = 600;
+    function project(x: number, y: number, z: number, cx: number, cy: number): { x: number; y: number; scale: number } {
+      const depth = fov / (fov + z);
+      return {
+        x: cx + x * depth,
+        y: cy + y * depth,
+        scale: depth,
+      };
+    }
 
     function resize() {
       if (!canvas || !ctx) return;
@@ -83,27 +143,50 @@ export function ParticleConstellation({
       particles = [];
       if (width === 0 || height === 0) return;
 
-      // Brain/cloud cluster positioned on the right half of the hero
-      const centerX = width * 0.68;
-      const centerY = height * 0.5;
-      const maxRadius = Math.min(width * 0.35, height * 0.42);
-
+      // Tetrahedron cluster — particles on faces, positioned right side of hero
       const clusterCount = Math.min(8000, Math.floor((width * height) / 500));
+      const tetraScale = Math.min(width * 0.18, height * 0.28);
+
       for (let i = 0; i < clusterCount; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const r = Math.pow(Math.random(), 0.5) * maxRadius;
-        // Brain-like lobes
-        const lobeFactor = 1 + 0.35 * Math.sin(angle * 2) + 0.15 * Math.sin(angle * 5);
-        const x = centerX + Math.cos(angle) * r * lobeFactor;
-        const y = centerY + Math.sin(angle) * r * 0.7;
+        const face = tetraFaces[Math.floor(Math.random() * tetraFaces.length)];
+        // 70% on faces, 30% on edges (thicker edges for wireframe feel)
+        let point: [number, number, number];
+        if (Math.random() < 0.3) {
+          // Snap toward an edge — pick two vertices, interpolate
+          const edge = [face[0], face[Math.floor(Math.random() * 2) + 1]];
+          const t = Math.random();
+          const v0 = tetraVertices[edge[0]];
+          const v1 = tetraVertices[edge[1]];
+          point = [
+            v0[0] * (1 - t) + v1[0] * t,
+            v0[1] * (1 - t) + v1[1] * t,
+            v0[2] * (1 - t) + v1[2] * t,
+          ];
+          // Add slight jitter so edges aren't perfectly straight
+          point[0] += (Math.random() - 0.5) * 0.08;
+          point[1] += (Math.random() - 0.5) * 0.08;
+          point[2] += (Math.random() - 0.5) * 0.08;
+        } else {
+          point = randomPointOnFace(face);
+          // Add slight jitter for organic feel
+          point[0] += (Math.random() - 0.5) * 0.1;
+          point[1] += (Math.random() - 0.5) * 0.1;
+          point[2] += (Math.random() - 0.5) * 0.1;
+        }
+
+        // Scale to tetrahedron size
+        const bx = point[0] * tetraScale;
+        const by = point[1] * tetraScale;
+        const bz = point[2] * tetraScale;
 
         particles.push({
-          x,
-          y,
-          baseX: x,
-          baseY: y,
-          vx: (Math.random() - 0.5) * 0.15,
-          vy: (Math.random() - 0.5) * 0.15,
+          bx,
+          by,
+          bz,
+          x: 0,
+          y: 0,
+          ox: 0,
+          oy: 0,
           size: 1 + Math.random() * 2.5,
           color: colors[Math.floor(Math.random() * colors.length)],
           opacity: 0.35 + Math.random() * 0.5,
@@ -115,18 +198,19 @@ export function ParticleConstellation({
         });
       }
 
-      // Ambient particles scattered across full viewport
+      // Ambient particles scattered across full viewport (2D, no 3D)
       const ambientCount = Math.min(1500, Math.floor((width * height) / 4000));
       for (let i = 0; i < ambientCount; i++) {
         const x = Math.random() * width;
         const y = Math.random() * height;
         particles.push({
+          bx: 0,
+          by: 0,
+          bz: 0,
           x,
           y,
-          baseX: x,
-          baseY: y,
-          vx: (Math.random() - 0.5) * 0.1,
-          vy: (Math.random() - 0.5) * 0.1,
+          ox: 0,
+          oy: 0,
           size: 4 + Math.random() * 1.5,
           color: colors[Math.floor(Math.random() * colors.length)],
           opacity: 0.06 + Math.random() * 0.15,
@@ -163,68 +247,92 @@ export function ParticleConstellation({
       ctx.restore();
     }
 
+    // Rotation angles — accumulate over time for continuous spin
+    let rotY = 0;
+    let rotX = 0;
+
     function animate() {
       if (!ctx) return;
       ctx.clearRect(0, 0, width, height);
 
-      // Scroll progress: 0 = hero at top, 1 = hero fully scrolled past
       const scrollProgress = scrollProgressRef?.current ?? internalScrollRef.current;
+      const cx = width * 0.68; // tetrahedron center on screen
+      const cy = height * 0.5;
+
+      // Slow auto-rotation
+      rotY += 0.003;
+      rotX += 0.001;
+
+      // Sort cluster particles by depth for proper z-ordering
+      const clusterParticles: { p: Particle3D; z: number; screenX: number; screenY: number; scale: number }[] = [];
 
       for (const p of particles) {
         p.rotation += p.rotationSpeed;
 
         if (p.isAmbient) {
-          // Ambient particles: slow drift, wrap around viewport
-          p.x += p.vx;
-          p.y += p.vy;
+          // Ambient: 2D drift, wrap around
+          p.x += (Math.random() - 0.5) * 0.1;
+          p.y += (Math.random() - 0.5) * 0.1;
           if (p.x < -10) p.x = width + 10;
           if (p.x > width + 10) p.x = -10;
           if (p.y < -10) p.y = height + 10;
           if (p.y > height + 10) p.y = -10;
-
-          // Ambient particles stay at constant low opacity
           drawTriangle(p.x, p.y, p.size, p.rotation, p.color, p.opacity);
         } else {
-          // Cluster particles: disperse on scroll
-          if (scrollProgress > 0) {
-            // Scatter outward from base position
-            const scatterDist = scrollProgress * p.scatterSpeed * 400;
-            const targetX = p.baseX + Math.cos(p.scatterAngle) * scatterDist;
-            const targetY = p.baseY + Math.sin(p.scatterAngle) * scatterDist;
+          // 3D tetrahedron particle: rotate, project, draw
+          let [rx, ry, rz] = rotateY(p.bx, p.by, p.bz, rotY);
+          [rx, ry, rz] = rotateX(rx, ry, rz, rotX);
 
-            // Smooth interpolation toward scatter target
-            p.x += (targetX - p.x) * 0.08;
-            p.y += (targetY - p.y) * 0.08;
-          } else {
-            // Return to base position when scrolled back up
-            p.x += (p.baseX - p.x) * 0.1;
-            p.y += (p.baseY - p.y) * 0.1;
-          }
+          const proj = project(rx, ry, rz, cx, cy);
+          const screenX = proj.x;
+          const screenY = proj.y;
+          const depthScale = proj.scale; // <1 when far, >1 when near
 
-          // Mouse repulsion — particles flee from cursor when hovering over the brain
-          if (mouse.active) {
-            const dx = p.x - mouse.x;
-            const dy = p.y - mouse.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < repelRadius && dist > 0) {
-              const force = (1 - dist / repelRadius) * repelStrength;
-              p.x += (dx / dist) * force;
-              p.y += (dy / dist) * force;
-            }
-          }
-
-          // Subtle organic motion
-          const t = Date.now() * 0.0004;
-          p.x += Math.sin(t + p.baseX * 0.01) * 0.12;
-          p.y += Math.cos(t + p.baseY * 0.01) * 0.12;
-
-          // Opacity: full at scroll 0, fades to ambient level as dispersed
-          // After full dispersion, particles remain visible at low opacity behind content
-          const dispersedOpacity = 0.08 + (1 - Math.min(1, scrollProgress)) * 0.4;
-          const finalOpacity = p.opacity * (scrollProgress > 0.05 ? dispersedOpacity : 1);
-
-          drawTriangle(p.x, p.y, p.size, p.rotation, p.color, finalOpacity);
+          // Store for depth sorting
+          clusterParticles.push({ p, z: rz, screenX, screenY, scale: depthScale });
         }
+      }
+
+      // Sort by z (far to near) so near particles draw on top
+      clusterParticles.sort((a, b) => a.z - b.z);
+
+      for (const { p, z, screenX, screenY, scale } of clusterParticles) {
+        // Scatter offset for scroll dispersion
+        let ox = 0;
+        let oy = 0;
+
+        if (scrollProgress > 0) {
+          const scatterDist = scrollProgress * p.scatterSpeed * 400;
+          ox = Math.cos(p.scatterAngle) * scatterDist;
+          oy = Math.sin(p.scatterAngle) * scatterDist;
+        }
+
+        // Mouse repulsion (in screen space)
+        if (mouse.active) {
+          const dx = screenX + ox - mouse.x;
+          const dy = screenY + oy - mouse.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < repelRadius && dist > 0) {
+            const force = (1 - dist / repelRadius) * repelStrength;
+            ox += (dx / dist) * force;
+            oy += (dy / dist) * force;
+          }
+        }
+
+        // Organic motion
+        const t = Date.now() * 0.0004;
+        ox += Math.sin(t + p.bx * 0.01) * 0.5;
+        oy += Math.cos(t + p.by * 0.01) * 0.5;
+
+        const finalX = screenX + ox;
+        const finalY = screenY + oy;
+
+        // Size and opacity scaled by depth
+        const depthOpacity = 0.4 + scale * 0.6; // far = dimmer, near = brighter
+        const dispersedOpacity = 0.08 + (1 - Math.min(1, scrollProgress)) * 0.4;
+        const finalOpacity = p.opacity * depthOpacity * (scrollProgress > 0.05 ? dispersedOpacity : 1);
+
+        drawTriangle(finalX, finalY, p.size * scale, p.rotation, p.color, finalOpacity);
       }
 
       animationId = requestAnimationFrame(animate);
