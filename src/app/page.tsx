@@ -16,8 +16,8 @@ export default function LandingPage() {
       {/* Nav — fixed, transparent on black */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-8 py-6">
         <div className="max-w-[1280px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <div className="flex items-center">
+            <svg width="24" height="24" viewBox="0 0 20 20" fill="none">
               <circle cx="10" cy="10" r="2" fill="#8052ff" />
               <circle cx="10" cy="10" r="5" stroke="#8052ff" strokeWidth="1" opacity="0.6" />
               <circle cx="10" cy="10" r="8" stroke="#8052ff" strokeWidth="1" opacity="0.3" />

@@ -198,13 +198,13 @@ export default function AppPage() {
     <div className="flex flex-col h-screen overflow-hidden bg-black text-white">
       {/* Header — minimal, transparent on black */}
       <header className="flex items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2 text-[#9a9a9a] hover:text-white transition-colors">
             <ArrowLeft className="w-4 h-4" />
             <span className="text-[14px] font-semibold tracking-[0.025em] uppercase">Back</span>
           </Link>
           <div className="flex items-center gap-2.5">
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+            <svg width="26" height="26" viewBox="0 0 20 20" fill="none">
               <circle cx="10" cy="10" r="2" fill="#8052ff" />
               <circle cx="10" cy="10" r="5" stroke="#8052ff" strokeWidth="1" opacity="0.6" />
               <circle cx="10" cy="10" r="8" stroke="#8052ff" strokeWidth="1" opacity="0.3" />

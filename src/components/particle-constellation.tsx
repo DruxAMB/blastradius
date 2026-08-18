@@ -282,7 +282,13 @@ export function ParticleConstellation({
       ctx.clearRect(0, 0, width, height);
 
       const scrollProgress = scrollProgressRef?.current ?? internalScrollRef.current;
-      const cx = width * 0.68;
+
+      // Two-phase scroll: 0→0.3 drift to center, 0.3→1 scatter
+      const centerPhase = Math.min(1, scrollProgress / 0.3); // 0→1 over first 30% of scroll
+      const scatterPhase = Math.max(0, (scrollProgress - 0.3) / 0.7); // 0→1 over remaining 70%
+
+      // Shape center moves from right (0.68) to center (0.5) as user scrolls
+      const cx = width * (0.68 - centerPhase * 0.18);
       const cy = height * 0.5;
       const tetraScale = Math.min(width * 0.18, height * 0.28);
 
@@ -367,9 +373,9 @@ export function ParticleConstellation({
         let ox = 0;
         let oy = 0;
 
-        // Scroll dispersion
-        if (scrollProgress > 0) {
-          const scatterDist = scrollProgress * p.scatterSpeed * 400;
+        // Scroll dispersion — only after shape has reached center
+        if (scatterPhase > 0) {
+          const scatterDist = scatterPhase * p.scatterSpeed * 400;
           ox = Math.cos(p.scatterAngle) * scatterDist;
           oy = Math.sin(p.scatterAngle) * scatterDist;
         }
@@ -395,8 +401,8 @@ export function ParticleConstellation({
         const finalY = r.y + oy;
 
         const depthOpacity = 0.4 + r.scale * 0.6;
-        const dispersedOpacity = 0.08 + (1 - Math.min(1, scrollProgress)) * 0.4;
-        const finalOpacity = p.opacity * depthOpacity * (scrollProgress > 0.05 ? dispersedOpacity : 1);
+        const dispersedOpacity = 0.08 + (1 - Math.min(1, scatterPhase)) * 0.4;
+        const finalOpacity = p.opacity * depthOpacity * (scatterPhase > 0.05 ? dispersedOpacity : 1);
 
         drawTriangle(finalX, finalY, p.size * r.scale, p.rotation, p.color, finalOpacity);
       }
