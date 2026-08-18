@@ -300,7 +300,15 @@ export default function Home() {
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Graph canvas */}
-        <div ref={graphContainerRef} className="flex-1 relative bg-zinc-950">
+        <div
+          ref={graphContainerRef}
+          className="flex-1 relative bg-zinc-950"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, rgba(63, 63, 70, 0.3) 1px, transparent 0)",
+            backgroundSize: "24px 24px",
+          }}
+        >
           {!blastResult && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-600">
               <Shield className="w-16 h-16 mb-4 opacity-20" />
@@ -362,6 +370,37 @@ export default function Home() {
                     distance: node.distance as number,
                     description: (node.description as string) ?? "",
                   });
+                }}
+                nodeCanvasObject={(node: Record<string, unknown>, ctx: CanvasRenderingContext2D, globalScale: number) => {
+                  const x = node.x as number;
+                  const y = node.y as number;
+                  const color = node.color as string;
+                  const name = node.name as string;
+                  const distance = node.distance as number;
+                  const val = node.val as number;
+
+                  // Draw node circle
+                  ctx.fillStyle = color;
+                  ctx.beginPath();
+                  ctx.arc(x, y, 5 + (val - 1) * 2, 0, 2 * Math.PI);
+                  ctx.fill();
+
+                  // Draw glow for source node
+                  if (distance === 0) {
+                    ctx.shadowColor = color;
+                    ctx.shadowBlur = 15;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                  }
+
+                  // Draw label (only when zoomed in enough)
+                  if (globalScale > 1.5) {
+                    ctx.font = `${10 / globalScale}px sans-serif`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#e4e4e7";
+                    ctx.fillText(name, x, y + 12 / globalScale);
+                  }
                 }}
                 cooldownTicks={100}
                 width={graphDimensions.width}
