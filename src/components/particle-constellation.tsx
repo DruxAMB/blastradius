@@ -31,10 +31,16 @@ export function ParticleConstellation({
     let width = 0;
     let height = 0;
 
-    // Mouse tracking for repulsion
-    const mouse = { x: -9999, y: -9999, active: false };
-    const repelRadius = 120;
-    const repelStrength = 2.5;
+    // Drag-to-rotate tracking
+    const drag = {
+      active: false,
+      lastX: 0,
+      lastY: 0,
+      velX: 0, // velocity for inertia after release
+      velY: 0,
+    };
+    const dragSensitivity = 0.008; // radians per pixel of drag
+    const inertiaDamping = 0.95;
 
     const colors = [
       "#8052ff", "#ffb829", "#15846e", "#ff6b9d",
@@ -61,6 +67,8 @@ export function ParticleConstellation({
       isAmbient: boolean;
       scatterAngle: number;
       scatterSpeed: number;
+      vx: number; // velocity for ambient drift
+      vy: number;
     }
 
     let particles: Particle3D[] = [];
@@ -195,6 +203,8 @@ export function ParticleConstellation({
           isAmbient: false,
           scatterAngle: Math.random() * Math.PI * 2,
           scatterSpeed: 0.8 + Math.random() * 2.5,
+          vx: 0,
+          vy: 0,
         });
       }
 
@@ -219,6 +229,8 @@ export function ParticleConstellation({
           isAmbient: true,
           scatterAngle: Math.random() * Math.PI * 2,
           scatterSpeed: 0.3 + Math.random() * 1.5,
+          vx: (Math.random() - 0.5) * 0.6,
+          vy: (Math.random() - 0.5) * 0.6,
         });
       }
     }
@@ -259,9 +271,19 @@ export function ParticleConstellation({
       const cx = width * 0.68; // tetrahedron center on screen
       const cy = height * 0.5;
 
-      // Slow auto-rotation
-      rotY += 0.003;
-      rotX += 0.001;
+      // Rotation: auto-spin + drag inertia
+      if (drag.active) {
+        // Dragging — rotation handled in mousemove handler
+      } else {
+        // Apply inertia from last drag, decaying
+        rotY += drag.velY;
+        rotX += drag.velX;
+        drag.velY *= inertiaDamping;
+        drag.velX *= inertiaDamping;
+        // Slow auto-rotation when inertia is near zero
+        if (Math.abs(drag.velY) < 0.001) rotY += 0.003;
+        if (Math.abs(drag.velX) < 0.001) rotX += 0.001;
+      }
 
       // Sort cluster particles by depth for proper z-ordering
       const clusterParticles: { p: Particle3D; z: number; screenX: number; screenY: number; scale: number }[] = [];
@@ -270,13 +292,13 @@ export function ParticleConstellation({
         p.rotation += p.rotationSpeed;
 
         if (p.isAmbient) {
-          // Ambient: 2D drift, wrap around
-          p.x += (Math.random() - 0.5) * 0.1;
-          p.y += (Math.random() - 0.5) * 0.1;
-          if (p.x < -10) p.x = width + 10;
-          if (p.x > width + 10) p.x = -10;
-          if (p.y < -10) p.y = height + 10;
-          if (p.y > height + 10) p.y = -10;
+          // Ambient: real velocity-based drift, wrap around viewport
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < -10) { p.x = width + 10; }
+          if (p.x > width + 10) { p.x = -10; }
+          if (p.y < -10) { p.y = height + 10; }
+          if (p.y > height + 10) { p.y = -10; }
           drawTriangle(p.x, p.y, p.size, p.rotation, p.color, p.opacity);
         } else {
           // 3D tetrahedron particle: rotate, project, draw
@@ -286,9 +308,8 @@ export function ParticleConstellation({
           const proj = project(rx, ry, rz, cx, cy);
           const screenX = proj.x;
           const screenY = proj.y;
-          const depthScale = proj.scale; // <1 when far, >1 when near
+          const depthScale = proj.scale;
 
-          // Store for depth sorting
           clusterParticles.push({ p, z: rz, screenX, screenY, scale: depthScale });
         }
       }
@@ -307,18 +328,6 @@ export function ParticleConstellation({
           oy = Math.sin(p.scatterAngle) * scatterDist;
         }
 
-        // Mouse repulsion (in screen space)
-        if (mouse.active) {
-          const dx = screenX + ox - mouse.x;
-          const dy = screenY + oy - mouse.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < repelRadius && dist > 0) {
-            const force = (1 - dist / repelRadius) * repelStrength;
-            ox += (dx / dist) * force;
-            oy += (dy / dist) * force;
-          }
-        }
-
         // Organic motion
         const t = Date.now() * 0.0004;
         ox += Math.sin(t + p.bx * 0.01) * 0.5;
@@ -328,7 +337,7 @@ export function ParticleConstellation({
         const finalY = screenY + oy;
 
         // Size and opacity scaled by depth
-        const depthOpacity = 0.4 + scale * 0.6; // far = dimmer, near = brighter
+        const depthOpacity = 0.4 + scale * 0.6;
         const dispersedOpacity = 0.08 + (1 - Math.min(1, scrollProgress)) * 0.4;
         const finalOpacity = p.opacity * depthOpacity * (scrollProgress > 0.05 ? dispersedOpacity : 1);
 
@@ -344,32 +353,88 @@ export function ParticleConstellation({
       internalScrollRef.current = Math.min(1, Math.max(0, scrollY / heroHeight));
     }
 
-    function handleMouseMove(e: MouseEvent) {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-      mouse.active = true;
+    function handleMouseDown(e: MouseEvent) {
+      // Only activate drag when clicking on the right half (where the tetrahedron lives)
+      // and not on interactive elements (links, buttons, inputs)
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === "A" || target.tagName === "BUTTON" || target.tagName === "INPUT" || target.closest("a, button, input"))) return;
+      if (e.clientX < width * 0.45) return; // only right half
+      drag.active = true;
+      drag.lastX = e.clientX;
+      drag.lastY = e.clientY;
+      drag.velX = 0;
+      drag.velY = 0;
     }
 
-    function handleMouseLeave() {
-      mouse.active = false;
-      mouse.x = -9999;
-      mouse.y = -9999;
+    function handleMouseMove(e: MouseEvent) {
+      if (!drag.active) return;
+      const dx = e.clientX - drag.lastX;
+      const dy = e.clientY - drag.lastY;
+      // Rotate based on drag distance — high sensitivity
+      rotY += dx * dragSensitivity;
+      rotX += dy * dragSensitivity;
+      // Track velocity for inertia
+      drag.velY = dx * dragSensitivity;
+      drag.velX = dy * dragSensitivity;
+      drag.lastX = e.clientX;
+      drag.lastY = e.clientY;
+    }
+
+    function handleMouseUp() {
+      drag.active = false;
+    }
+
+    // Touch support
+    function handleTouchStart(e: TouchEvent) {
+      if (e.touches.length === 0) return;
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === "A" || target.tagName === "BUTTON" || target.tagName === "INPUT" || target.closest("a, button, input"))) return;
+      if (e.touches[0].clientX < width * 0.45) return;
+      drag.active = true;
+      drag.lastX = e.touches[0].clientX;
+      drag.lastY = e.touches[0].clientY;
+      drag.velX = 0;
+      drag.velY = 0;
+    }
+
+    function handleTouchMove(e: TouchEvent) {
+      if (!drag.active || e.touches.length === 0) return;
+      const dx = e.touches[0].clientX - drag.lastX;
+      const dy = e.touches[0].clientY - drag.lastY;
+      rotY += dx * dragSensitivity;
+      rotX += dy * dragSensitivity;
+      drag.velY = dx * dragSensitivity;
+      drag.velX = dy * dragSensitivity;
+      drag.lastX = e.touches[0].clientX;
+      drag.lastY = e.touches[0].clientY;
+    }
+
+    function handleTouchEnd() {
+      drag.active = false;
     }
 
     resize();
     animate();
     window.addEventListener("resize", resize);
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    window.addEventListener("mouseout", handleMouseLeave, { passive: true });
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd);
     handleScroll();
 
     return () => {
       cancelAnimationFrame(animationId);
       window.removeEventListener("resize", resize);
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseout", handleMouseLeave);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
     };
   }, [scrollProgressRef]);
 
