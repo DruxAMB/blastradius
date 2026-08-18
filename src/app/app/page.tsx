@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Search, AlertTriangle, Users, Type, Loader2, ArrowLeft, Zap } from "lucide-react";
+import { Search, AlertTriangle, Users, Type, Loader2, Zap } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 
@@ -198,20 +198,14 @@ export default function AppPage() {
     <div className="flex flex-col h-screen overflow-hidden bg-black text-white px-6 pb-6">
       {/* Header — minimal, transparent on black */}
       <header className="flex items-center justify-between py-4">
-        <div className="flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2 text-[#9a9a9a] hover:text-white transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-[14px] font-semibold tracking-[0.025em] uppercase">Back</span>
-          </Link>
-          <div className="flex items-center gap-2.5">
-            <svg width="26" height="26" viewBox="0 0 20 20" fill="none">
-              <circle cx="10" cy="10" r="2" fill="#8052ff" />
-              <circle cx="10" cy="10" r="5" stroke="#8052ff" strokeWidth="1" opacity="0.6" />
-              <circle cx="10" cy="10" r="8" stroke="#8052ff" strokeWidth="1" opacity="0.3" />
-            </svg>
-            <span className="text-[14px] font-semibold tracking-[0.025em] uppercase">BlastRadius</span>
-          </div>
-        </div>
+        <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+          <svg width="24" height="24" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="2" fill="#8052ff" />
+            <circle cx="10" cy="10" r="5" stroke="#8052ff" strokeWidth="1" opacity="0.6" />
+            <circle cx="10" cy="10" r="8" stroke="#8052ff" strokeWidth="1" opacity="0.3" />
+          </svg>
+          <span className="text-[14px] font-semibold tracking-[0.025em] uppercase ml-2.5">BlastRadius</span>
+        </Link>
         <div className="text-[12px] text-[#9a9a9a] uppercase tracking-[0.025em]">
           npm dependency graph
         </div>
