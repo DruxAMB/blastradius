@@ -87,16 +87,39 @@ export async function cypher(
 }
 
 /**
- * Extract a string property value from a HydraDB node property object.
- * HydraDB returns properties as { String: "value" } or { Integer: 123 }.
+ * Extract a value from a HydraDB query result cell.
+ * HydraDB returns row values in two formats:
+ * - RETURN projections: { type: "string", value: "left-pad" } or { type: "vertex_id", value: 1 }
+ * - Node properties: { String: "left-pad" } or { Integer: 123 } or { Boolean: true }
  */
 export function propValue(
-  prop: { String?: string; Integer?: number; Boolean?: boolean } | undefined,
+  cell: unknown,
 ): string | number | boolean | undefined {
-  if (!prop) return undefined;
-  if (prop.String !== undefined) return prop.String;
-  if (prop.Integer !== undefined) return prop.Integer;
-  if (prop.Boolean !== undefined) return prop.Boolean;
+  if (cell == null) return undefined;
+  if (typeof cell === "string") return cell;
+  if (typeof cell === "number") return cell;
+  if (typeof cell === "boolean") return cell;
+
+  const obj = cell as {
+    // RETURN projection format
+    type?: string;
+    value?: unknown;
+    // Node property format
+    String?: string;
+    Integer?: number;
+    Boolean?: boolean;
+  };
+
+  // RETURN projection format: { type: "string", value: "..." }
+  if (obj.value !== undefined && obj.type !== undefined) {
+    return obj.value as string | number | boolean;
+  }
+
+  // Node property format: { String: "..." } / { Integer: ... } / { Boolean: ... }
+  if (obj.String !== undefined) return obj.String;
+  if (obj.Integer !== undefined) return obj.Integer;
+  if (obj.Boolean !== undefined) return obj.Boolean;
+
   return undefined;
 }
 
