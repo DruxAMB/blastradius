@@ -30,6 +30,11 @@ export function ParticleConstellation({
     let width = 0;
     let height = 0;
 
+    // Mouse tracking for repulsion interaction
+    const mouse = { x: -9999, y: -9999, active: false };
+    const repelRadius = 120;
+    const repelStrength = 2.5;
+
     const colors = [
       "#8052ff", // electric iris
       "#ffb829", // saffron spark
@@ -83,7 +88,7 @@ export function ParticleConstellation({
       const centerY = height * 0.5;
       const maxRadius = Math.min(width * 0.35, height * 0.42);
 
-      const clusterCount = Math.min(600, Math.floor((width * height) / 500));
+      const clusterCount = Math.min(8000, Math.floor((width * height) / 500));
       for (let i = 0; i < clusterCount; i++) {
         const angle = Math.random() * Math.PI * 2;
         const r = Math.pow(Math.random(), 0.5) * maxRadius;
@@ -111,7 +116,7 @@ export function ParticleConstellation({
       }
 
       // Ambient particles scattered across full viewport
-      const ambientCount = Math.min(150, Math.floor((width * height) / 4000));
+      const ambientCount = Math.min(1500, Math.floor((width * height) / 4000));
       for (let i = 0; i < ambientCount; i++) {
         const x = Math.random() * width;
         const y = Math.random() * height;
@@ -122,7 +127,7 @@ export function ParticleConstellation({
           baseY: y,
           vx: (Math.random() - 0.5) * 0.1,
           vy: (Math.random() - 0.5) * 0.1,
-          size: 1 + Math.random() * 1.5,
+          size: 4 + Math.random() * 1.5,
           color: colors[Math.floor(Math.random() * colors.length)],
           opacity: 0.06 + Math.random() * 0.15,
           rotation: Math.random() * Math.PI * 2,
@@ -196,6 +201,18 @@ export function ParticleConstellation({
             p.y += (p.baseY - p.y) * 0.1;
           }
 
+          // Mouse repulsion — particles flee from cursor when hovering over the brain
+          if (mouse.active) {
+            const dx = p.x - mouse.x;
+            const dy = p.y - mouse.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < repelRadius && dist > 0) {
+              const force = (1 - dist / repelRadius) * repelStrength;
+              p.x += (dx / dist) * force;
+              p.y += (dy / dist) * force;
+            }
+          }
+
           // Subtle organic motion
           const t = Date.now() * 0.0004;
           p.x += Math.sin(t + p.baseX * 0.01) * 0.12;
@@ -219,16 +236,32 @@ export function ParticleConstellation({
       internalScrollRef.current = Math.min(1, Math.max(0, scrollY / heroHeight));
     }
 
+    function handleMouseMove(e: MouseEvent) {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+      mouse.active = true;
+    }
+
+    function handleMouseLeave() {
+      mouse.active = false;
+      mouse.x = -9999;
+      mouse.y = -9999;
+    }
+
     resize();
     animate();
     window.addEventListener("resize", resize);
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("mouseout", handleMouseLeave, { passive: true });
     handleScroll();
 
     return () => {
       cancelAnimationFrame(animationId);
       window.removeEventListener("resize", resize);
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseout", handleMouseLeave);
     };
   }, [scrollProgressRef]);
 

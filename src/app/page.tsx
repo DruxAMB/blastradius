@@ -47,18 +47,18 @@ export default function LandingPage() {
 
         <div className="relative z-10 max-w-[1280px] mx-auto w-full">
           {/* Text occupies left half — particles show through on the right */}
-          <div className="max-w-[640px]">
+          <div className="max-w-xl">
+            <FadeUp delay={0.1}>
+              <h1 className="mb-8 text-5xl">
+                When a package <br /> is compromised,
+                <br />
+                <span className="text-[#8052ff] text-display">what&apos;s the blast radius?</span>
+              </h1>
+            </FadeUp>
             <FadeUp>
               <div className="text-amber-label mb-6">
                 Supply chain attacks are surging
               </div>
-            </FadeUp>
-            <FadeUp delay={0.1}>
-              <h1 className="text-display mb-8">
-                When a package is compromised,
-                <br />
-                <span className="text-[#8052ff]">what&apos;s the blast radius?</span>
-              </h1>
             </FadeUp>
             <FadeUp delay={0.2}>
               <p className="text-body-lg text-[#bdbdbd] max-w-[480px] mb-10">
