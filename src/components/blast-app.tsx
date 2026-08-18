@@ -477,7 +477,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
                   ctx.lineTo(target.x, target.y);
                   ctx.stroke();
                 }}
-                enableNodeDrag={false}
+                enableNodeDrag={true}
                 cooldownTicks={0}
                 width={graphDimensions.width}
                 height={graphDimensions.height}
