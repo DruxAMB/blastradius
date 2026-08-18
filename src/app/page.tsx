@@ -1,17 +1,22 @@
+"use client";
+
 import Link from "next/link";
+import { useRef } from "react";
 import { ParticleConstellation } from "@/components/particle-constellation";
+import { FadeUp, FadeIn, ScaleIn, useScrollProgress } from "@/components/animations";
 
 export default function LandingPage() {
+  const heroScrollProgress = useScrollProgress();
+
   return (
-    <div className="min-h-screen bg-black text-white overflow-x-hidden">
-      {/* Nav — transparent, minimal */}
-      <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-5">
+    <div className="min-h-screen bg-black text-white">
+      {/* Nav — fixed, transparent on black */}
+      <nav className="fixed top-0 left-0 right-0 z-50 px-8 py-6">
         <div className="max-w-[1280px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            {/* Triangular logo mark */}
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
               <path d="M10 2L18 16H2L10 2Z" stroke="#8052ff" strokeWidth="1.5" />
-              <path d="M10 2L18 16H2L10 2Z" fill="url(#logo-gradient)" fillOpacity="0.3" />
+              <path d="M10 2L18 16H2L10 2Z" fill="url(#logo-gradient)" fillOpacity="0.2" />
               <defs>
                 <linearGradient id="logo-gradient" x1="10" y1="2" x2="10" y2="16">
                   <stop stopColor="#8052ff" />
@@ -21,7 +26,7 @@ export default function LandingPage() {
             </svg>
             <span className="text-[14px] font-semibold tracking-[0.025em] uppercase">BlastRadius</span>
           </div>
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-10">
             <Link href="/app" className="text-[14px] font-semibold tracking-[0.025em] uppercase text-[#9a9a9a] hover:text-white transition-colors">
               Tool
             </Link>
@@ -35,60 +40,71 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* Hero — two-column asymmetric split */}
-      <section className="relative min-h-screen flex items-center px-6 pt-32 pb-20">
-        {/* Particle constellation on the right */}
-        <div className="absolute inset-0 z-0">
-          <ParticleConstellation className="absolute right-0 top-0 w-full h-full opacity-60" />
-        </div>
+      {/* Hero — two-column asymmetric: text left, particles right */}
+      <section className="relative min-h-screen flex items-center px-8 pt-32 pb-20 overflow-hidden">
+        {/* Subtle violet glow behind particles */}
+        <div className="absolute top-1/2 right-0 w-[600px] h-[600px] -translate-y-1/2 translate-x-1/4 bg-[#8052ff]/6 rounded-full blur-[180px] pointer-events-none" />
 
-        {/* Gradient glow */}
-        <div className="absolute inset-0 pointer-events-none z-0">
-          <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-[#8052ff]/8 rounded-full blur-[150px]" />
-        </div>
+        <div className="relative z-10 max-w-[1280px] mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          {/* Left: text */}
+          <div>
+            <FadeUp>
+              <div className="text-amber-label mb-6">
+                Supply chain attacks are surging
+              </div>
+            </FadeUp>
+            <FadeUp delay={0.1}>
+              <h1 className="text-display mb-8">
+                When a package is compromised,
+                <br />
+                <span className="text-[#8052ff]">what&apos;s the blast radius?</span>
+              </h1>
+            </FadeUp>
+            <FadeUp delay={0.2}>
+              <p className="text-body-lg text-[#bdbdbd] max-w-[480px] mb-10">
+                BlastRadius computes the complete transitive dependency closure of any npm
+                package in seconds. Powered by HydraDB&apos;s graph-native engine — the
+                question a vector database cannot answer.
+              </p>
+            </FadeUp>
+            <FadeUp delay={0.3}>
+              <div className="flex items-center gap-6">
+                <Link href="/app" className="btn-violet">
+                  Calculate Blast Radius
+                </Link>
+                <a
+                  href="https://github.com/hydra-db/hydradb"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-ghost"
+                >
+                  HydraDB OSS →
+                </a>
+              </div>
+            </FadeUp>
+          </div>
 
-        <div className="relative z-10 max-w-[1280px] mx-auto w-full">
-          <div className="max-w-[640px]">
-            <div className="text-amber-label mb-6">
-              Supply chain attacks are surging
-            </div>
-            <h1 className="text-display mb-8">
-              When a package is compromised,
-              <br />
-              <span className="text-[#8052ff]">what&apos;s the blast radius?</span>
-            </h1>
-            <p className="text-body-lg text-[#bdbdbd] max-w-[480px] mb-10">
-              BlastRadius computes the complete transitive dependency closure of any npm
-              package in seconds. Powered by HydraDB&apos;s graph-native engine — the
-              question a vector database cannot answer.
-            </p>
-            <div className="flex items-center gap-6">
-              <Link href="/app" className="btn-violet">
-                Calculate Blast Radius
-              </Link>
-              <a
-                href="https://github.com/hydra-db/hydradb"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-ghost"
-              >
-                HydraDB OSS →
-              </a>
-            </div>
+          {/* Right: particle constellation — the signature visual */}
+          <div className="relative h-[500px] lg:h-[600px]">
+            <ParticleConstellation
+              className="absolute inset-0"
+              mode="hero"
+              scrollProgressRef={heroScrollProgress}
+            />
           </div>
         </div>
       </section>
 
-      {/* Problem section — spacious two-column */}
-      <section className="px-6 py-[120px]">
-        <div className="max-w-[1280px] mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-[120px] items-start">
-            <div>
-              <div className="text-amber-label mb-6">The problem</div>
-              <h2 className="text-heading-lg mb-8">
-                Every dependency is a liability.
-              </h2>
-            </div>
+      {/* Problem section — text LEFT, visual RIGHT (zigzag 1) */}
+      <section className="px-8 py-[120px]">
+        <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-[120px] items-start">
+          <FadeUp>
+            <div className="text-amber-label mb-6">The problem</div>
+            <h2 className="text-heading-lg mb-8">
+              Every dependency is a liability.
+            </h2>
+          </FadeUp>
+          <FadeUp delay={0.15}>
             <div className="max-w-[520px]">
               <p className="text-body-lg text-[#bdbdbd] mb-6">
                 In 2016, the unpublishing of <span className="text-[#ffb829]">left-pad</span> broke
@@ -101,25 +117,26 @@ export default function LandingPage() {
                 problem, and it&apos;s what BlastRadius solves.
               </p>
             </div>
-          </div>
+          </FadeUp>
         </div>
       </section>
 
-      {/* Three layers of risk — spacious, no cards */}
-      <section className="px-6 py-[120px]">
+      {/* Three layers — visual LEFT, text RIGHT (zigzag 2) */}
+      <section className="px-8 py-[120px]">
         <div className="max-w-[1280px] mx-auto">
-          <div className="mb-[96px]">
+          <FadeUp className="mb-[96px]">
             <div className="text-amber-label mb-6">Three layers</div>
             <h2 className="text-heading-lg">Three layers of risk.</h2>
-          </div>
+          </FadeUp>
 
-          <div className="space-y-[60px]">
+          <div className="space-y-[80px]">
             <RiskLayer
               number="01"
               label="BLAST RADIUS"
               title="Transitive reverse dependency closure"
               description="Every package affected, directly or indirectly, up to 10 hops. Computed via HydraDB's native OpenCypher path procedure — a graph traversal, not a search."
               color="#8052ff"
+              reversed
             />
             <RiskLayer
               number="02"
@@ -134,15 +151,16 @@ export default function LandingPage() {
               title="Packages with similar names"
               description="Potential typosquat attacks, ranked by Levenshtein edit distance. Catches left_pad, leftpad, lodas — the packages that trick developers into installing malware."
               color="#15846e"
+              reversed
             />
           </div>
         </div>
       </section>
 
-      {/* How it works — the query */}
-      <section className="px-6 py-[120px]">
-        <div className="max-w-[1280px] mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-[120px] items-start">
+      {/* How it works — text LEFT, code RIGHT (zigzag continues) */}
+      <section className="px-8 py-[120px]">
+        <div className="max-w-[1280px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-[120px] items-start">
+          <FadeUp>
             <div>
               <div className="text-amber-label mb-6">How it works</div>
               <h2 className="text-heading-lg mb-8">
@@ -155,8 +173,10 @@ export default function LandingPage() {
                 of nodes and relationships.
               </p>
             </div>
+          </FadeUp>
+          <FadeUp delay={0.15}>
             <div className="max-w-[520px]">
-              <div className="font-mono text-[13px] leading-[1.6] text-[#bdbdbd]">
+              <div className="font-mono text-[13px] leading-[1.7] text-[#bdbdbd]">
                 <div className="text-[#9a9a9a] mb-3">// The blast radius query</div>
                 <div><span className="text-[#8052ff]">CALL</span> algo.SSpaths(&#123;</div>
                 <div className="pl-4">sourceNode: <span className="text-[#ffb829]">$pkgId</span>,</div>
@@ -167,13 +187,13 @@ export default function LandingPage() {
                 <div>&#125;) <span className="text-[#8052ff]">YIELD</span> path <span className="text-[#8052ff]">RETURN</span> path</div>
               </div>
             </div>
-          </div>
+          </FadeUp>
         </div>
       </section>
 
-      {/* CTA — spacious, minimal */}
-      <section className="px-6 py-[160px]">
-        <div className="max-w-[1280px] mx-auto text-center">
+      {/* CTA — centered, spacious */}
+      <section className="px-8 py-[160px]">
+        <FadeUp className="max-w-[1280px] mx-auto text-center">
           <h2 className="text-heading-lg mb-8">
             See the graph explode.
           </h2>
@@ -184,11 +204,11 @@ export default function LandingPage() {
           <Link href="/app" className="btn-violet inline-block">
             Launch BlastRadius
           </Link>
-        </div>
+        </FadeUp>
       </section>
 
-      {/* Footer — minimal */}
-      <footer className="px-6 py-12 border-t border-[#111]">
+      {/* Footer */}
+      <footer className="px-8 py-12 border-t border-[#111]">
         <div className="max-w-[1280px] mx-auto flex items-center justify-between text-[12px] text-[#9a9a9a]">
           <span>Built for Hack Hydra 2026</span>
           <div className="flex items-center gap-6">
@@ -209,29 +229,33 @@ function RiskLayer({
   title,
   description,
   color,
+  reversed,
 }: {
   number: string;
   label: string;
   title: string;
   description: string;
   color: string;
+  reversed?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[80px_1fr_2fr] gap-6 lg:gap-12 items-start">
-      <div className="text-[14px] font-semibold tracking-[0.025em] uppercase" style={{ color }}>
-        {number}
-      </div>
-      <div>
-        <div className="text-[12px] font-semibold tracking-[0.025em] uppercase mb-3" style={{ color }}>
-          {label}
+    <FadeUp>
+      <div className={`grid grid-cols-1 lg:grid-cols-[80px_1fr_2fr] gap-6 lg:gap-12 items-start ${reversed ? "lg:[direction:rtl]" : ""}`}>
+        <div className="text-[14px] font-semibold tracking-[0.025em] uppercase lg:[direction:ltr]" style={{ color }}>
+          {number}
         </div>
-        <h3 className="text-[27px] font-normal leading-[1.1] tracking-[-0.02em]">
-          {title}
-        </h3>
+        <div className="lg:[direction:ltr]">
+          <div className="text-[12px] font-semibold tracking-[0.025em] uppercase mb-3" style={{ color }}>
+            {label}
+          </div>
+          <h3 className="text-[27px] font-normal leading-[1.1] tracking-[-0.02em]">
+            {title}
+          </h3>
+        </div>
+        <p className="text-body-lg text-[#bdbdbd] max-w-[480px] lg:[direction:ltr]">
+          {description}
+        </p>
       </div>
-      <p className="text-body-lg text-[#bdbdbd] max-w-[480px]">
-        {description}
-      </p>
-    </div>
+    </FadeUp>
   );
 }
