@@ -230,7 +230,7 @@ export function ParticleConstellation({
       }
 
       // Ambient particles
-      const ambientCount = Math.min(1500, Math.floor((width * height) / 4000));
+      const ambientCount = Math.min(200, Math.floor((width * height) / 4000));
       for (let i = 0; i < ambientCount; i++) {
         const x = Math.random() * width;
         const y = Math.random() * height;
@@ -284,13 +284,13 @@ export function ParticleConstellation({
       const scrollProgress = scrollProgressRef?.current ?? internalScrollRef.current;
 
       // Two-phase scroll: 0→0.3 drift to center, 0.3→1 scatter
-      const centerPhase = Math.min(1, scrollProgress / 0.3); // 0→1 over first 30% of scroll
-      const scatterPhase = Math.max(0, (scrollProgress - 0.3) / 0.7); // 0→1 over remaining 70%
+      const centerPhase = Math.min(1, scrollProgress / 0.1); // 0→1 over first 10% of scroll
+      const scatterPhase = Math.max(0, (scrollProgress - 0.1) / 0.9); // 0→1 over remaining 90%
 
       // Shape center moves from right (0.68) to center (0.5) as user scrolls
       const cx = width * (0.68 - centerPhase * 0.18);
       const cy = height * 0.5;
-      const tetraScale = Math.min(width * 0.18, height * 0.28);
+      const tetraScale = Math.min(width * 0.40, height * 0.40);
 
       // Shape cycling logic
       const now = Date.now();

@@ -195,9 +195,9 @@ export default function AppPage() {
     : { nodes: [], links: [] };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-black text-white">
+    <div className="flex flex-col h-screen overflow-hidden bg-black text-white px-6 pb-6">
       {/* Header — minimal, transparent on black */}
-      <header className="flex items-center justify-between px-6 py-4">
+      <header className="flex items-center justify-between py-4">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2 text-[#9a9a9a] hover:text-white transition-colors">
             <ArrowLeft className="w-4 h-4" />
@@ -218,7 +218,7 @@ export default function AppPage() {
       </header>
 
       {/* Search — no container, floating on black */}
-      <div className="px-6 pb-6">
+      <div className="pb-6">
         <div className="flex gap-3 max-w-[640px] mx-auto">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9a9a]" />
@@ -274,7 +274,7 @@ export default function AppPage() {
 
       {/* Error — minimal text on black */}
       {error && (
-        <div className="px-6 pb-4">
+        <div className="pb-4">
           <div className="max-w-[640px] mx-auto flex items-center gap-2 text-[14px] text-[#ffb829]">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             {error}
@@ -285,7 +285,7 @@ export default function AppPage() {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Graph canvas — pure black void */}
-        <div ref={graphContainerRef} className="flex-1 relative bg-black">
+        <div ref={graphContainerRef} className="flex-1 relative bg-black rounded-[24px] overflow-hidden">
           {!blastResult && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-[#444]">
               <p className="text-[18px] font-light text-[#666]">Search for a package to visualize its blast radius</p>
@@ -391,7 +391,7 @@ export default function AppPage() {
         </div>
 
         {/* Side panel — no border, no card, floating on black */}
-        <div className="w-[400px] bg-black flex flex-col overflow-hidden">
+        <div className="w-[400px] bg-black flex flex-col overflow-hidden pl-6">
           {/* Tabs — ghost text, no container */}
           <div className="flex px-6 py-4 gap-6">
             <TabButton active={activeTab === "blast"} onClick={() => setActiveTab("blast")} label="Blast Radius" />
