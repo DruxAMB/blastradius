@@ -355,12 +355,12 @@ export default function Home() {
                 linkDirectionalArrowColor="color"
                 linkDirectionalArrowLength={4}
                 linkDirectionalArrowRelPos={1}
-                onNodeClick={(node: { id: number; name: string; distance: number; description: string }) => {
+                onNodeClick={(node: Record<string, unknown>) => {
                   setSelectedNode({
-                    id: node.id,
-                    name: node.name,
-                    distance: node.distance,
-                    description: node.description,
+                    id: node.id as number,
+                    name: node.name as string,
+                    distance: node.distance as number,
+                    description: (node.description as string) ?? "",
                   });
                 }}
                 cooldownTicks={100}
