@@ -325,9 +325,9 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* Main content */}
+      {/* Main content — full width for graph visualization */}
       <div className="flex-1 overflow-hidden px-8 pb-6">
-        <div className="max-w-[1280px] mx-auto h-full flex overflow-hidden">
+        <div className="h-full flex overflow-hidden">
         {/* Graph canvas — pure black void */}
         <div ref={graphContainerRef} className="flex-1 relative bg-black">
           {!blastResult && !loading && (
