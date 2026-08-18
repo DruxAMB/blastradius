@@ -42,3 +42,6 @@ next-env.d.ts
 
 # working docs (AGENTS.local.md lives outside the repo; this is a fallback)
 AGENTS.local.md
+
+# HydraDB local data (Docker volume)
+/hydradb-data/
