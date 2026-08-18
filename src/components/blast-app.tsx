@@ -196,7 +196,8 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-black text-white">
       {/* Header — minimal, transparent on black */}
-      <header className="flex items-center justify-between px-8 py-4">
+      <header className="px-8 py-4">
+        <div className="max-w-[1280px] mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button onClick={onBack} className="flex items-center gap-2 text-[#9a9a9a] hover:text-white transition-colors">
             <ArrowLeft className="w-4 h-4" />
@@ -214,11 +215,13 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
         <div className="text-[12px] text-[#9a9a9a] uppercase tracking-[0.025em]">
           npm dependency graph
         </div>
+        </div>
       </header>
 
       {/* Search — no container, floating on black */}
       <div className="px-8 pb-6">
-        <div className="flex gap-3 max-w-[640px] mx-auto">
+        <div className="max-w-[1280px] mx-auto">
+        <div className="flex gap-3 max-w-[640px]">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9a9a]" />
             <input
@@ -269,14 +272,17 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
             )}
           </button>
         </div>
+        </div>
       </div>
 
       {/* Error — minimal text on black */}
       {error && (
         <div className="px-8 pb-4">
-          <div className="max-w-[640px] mx-auto flex items-center gap-2 text-[14px] text-[#ffb829]">
+          <div className="max-w-[1280px] mx-auto">
+          <div className="max-w-[640px] flex items-center gap-2 text-[14px] text-[#ffb829]">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             {error}
+          </div>
           </div>
         </div>
       )}
@@ -284,7 +290,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Graph canvas — pure black void */}
-        <div ref={graphContainerRef} className="flex-1 relative bg-black">
+        <div ref={graphContainerRef} className="flex-1 relative bg-black pl-8">
           {!blastResult && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-[#444]">
               <p className="text-[18px] font-light text-[#666]">Search for a package to visualize its blast radius</p>
