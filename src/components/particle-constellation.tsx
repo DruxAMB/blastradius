@@ -36,11 +36,16 @@ export function ParticleConstellation({
       active: false,
       lastX: 0,
       lastY: 0,
-      velX: 0, // velocity for inertia after release
+      velX: 0,
       velY: 0,
     };
-    const dragSensitivity = 0.008; // radians per pixel of drag
+    const dragSensitivity = 0.008;
     const inertiaDamping = 0.95;
+
+    // Mouse hover repulsion (only when not dragging)
+    const mouse = { x: -9999, y: -9999, active: false };
+    const repelRadius = 100;
+    const repelStrength = 3;
 
     const colors = [
       "#8052ff", "#ffb829", "#15846e", "#ff6b9d",
@@ -225,7 +230,7 @@ export function ParticleConstellation({
           color: colors[Math.floor(Math.random() * colors.length)],
           opacity: 0.06 + Math.random() * 0.15,
           rotation: Math.random() * Math.PI * 2,
-          rotationSpeed: (Math.random() - 0.5) * 0.008,
+          rotationSpeed: (Math.random() - 0.5) * 0.002,
           isAmbient: true,
           scatterAngle: Math.random() * Math.PI * 2,
           scatterSpeed: 0.3 + Math.random() * 1.5,
@@ -328,6 +333,18 @@ export function ParticleConstellation({
           oy = Math.sin(p.scatterAngle) * scatterDist;
         }
 
+        // Mouse repulsion — particles flee from cursor when hovering (not dragging)
+        if (mouse.active && !drag.active) {
+          const dx = screenX + ox - mouse.x;
+          const dy = screenY + oy - mouse.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < repelRadius && dist > 0) {
+            const force = (1 - dist / repelRadius) * repelStrength;
+            ox += (dx / dist) * force;
+            oy += (dy / dist) * force;
+          }
+        }
+
         // Organic motion
         const t = Date.now() * 0.0004;
         ox += Math.sin(t + p.bx * 0.01) * 0.5;
@@ -367,13 +384,17 @@ export function ParticleConstellation({
     }
 
     function handleMouseMove(e: MouseEvent) {
+      // Always track mouse position for repulsion
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+      mouse.active = true;
+
+      // If dragging, also rotate
       if (!drag.active) return;
       const dx = e.clientX - drag.lastX;
       const dy = e.clientY - drag.lastY;
-      // Rotate based on drag distance — high sensitivity
       rotY += dx * dragSensitivity;
       rotX += dy * dragSensitivity;
-      // Track velocity for inertia
       drag.velY = dx * dragSensitivity;
       drag.velX = dy * dragSensitivity;
       drag.lastX = e.clientX;
@@ -382,6 +403,12 @@ export function ParticleConstellation({
 
     function handleMouseUp() {
       drag.active = false;
+    }
+
+    function handleMouseLeave() {
+      mouse.active = false;
+      mouse.x = -9999;
+      mouse.y = -9999;
     }
 
     // Touch support
@@ -420,6 +447,7 @@ export function ParticleConstellation({
     window.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
     window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("mouseout", handleMouseLeave, { passive: true });
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
     window.addEventListener("touchmove", handleTouchMove, { passive: true });
     window.addEventListener("touchend", handleTouchEnd);
@@ -432,6 +460,7 @@ export function ParticleConstellation({
       window.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("mouseout", handleMouseLeave);
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
