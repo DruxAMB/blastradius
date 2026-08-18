@@ -139,8 +139,11 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
         setBlastResult(null);
       } else {
         setBlastResult(data);
+        // Center the graph on the origin (where source node sits)
         setTimeout(() => {
-          if (graphRef.current) graphRef.current.zoom(1.5, 300);
+          if (graphRef.current) {
+            graphRef.current.zoom(1.5, 300);
+          }
         }, 100);
       }
     } catch {
@@ -175,23 +178,66 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
     setTyposquats([]);
   }, [blastResult?.package]);
 
-  const graphData = blastResult
-    ? {
-        nodes: blastResult.nodes.map((n) => ({
+  // Compute radial layout: source at center, dependents arranged in rings by distance
+  const graphData = (() => {
+    if (!blastResult) return { nodes: [], links: [] };
+
+    // Group nodes by distance
+    const byDistance = new Map<number, typeof blastResult.nodes>();
+    for (const n of blastResult.nodes) {
+      const arr = byDistance.get(n.distance) ?? [];
+      arr.push(n);
+      byDistance.set(n.distance, arr);
+    }
+    const maxDist = Math.max(...byDistance.keys());
+
+    // Assign positions: source at (0,0), each ring at increasing radius
+    // Ring radius scales with distance — more space for inner rings
+    const ringSpacing = 120;
+    const nodePositions = new Map<number, { x: number; y: number }>();
+
+    for (const [dist, nodes] of byDistance) {
+      if (dist === 0) {
+        // Source at center
+        nodePositions.set(nodes[0].id, { x: 0, y: 0 });
+        continue;
+      }
+      const radius = dist * ringSpacing;
+      // Distribute nodes evenly on the ring
+      const angleStep = (Math.PI * 2) / nodes.length;
+      const angleOffset = dist * 0.3; // offset each ring so nodes don't line up
+      nodes.forEach((n, i) => {
+        const angle = i * angleStep + angleOffset;
+        nodePositions.set(n.id, {
+          x: Math.cos(angle) * radius,
+          y: Math.sin(angle) * radius,
+        });
+      });
+    }
+
+    return {
+      nodes: blastResult.nodes.map((n) => {
+        const pos = nodePositions.get(n.id) ?? { x: 0, y: 0 };
+        return {
           id: n.id,
           name: n.name,
           distance: n.distance,
           description: n.description,
           color: colorForDistance(n.distance),
-          val: n.distance === 0 ? 3 : Math.max(1, 3 - n.distance * 0.3),
-        })),
-        links: blastResult.links.map((l) => ({
-          source: l.source,
-          target: l.target,
-          color: "#222",
-        })),
-      }
-    : { nodes: [], links: [] };
+          val: n.distance === 0 ? 4 : Math.max(1, 3 - n.distance * 0.3),
+          x: pos.x,
+          y: pos.y,
+          fx: pos.x, // fixed position — no force simulation
+          fy: pos.y,
+        };
+      }),
+      links: blastResult.links.map((l) => ({
+        source: l.source,
+        target: l.target,
+        color: "rgba(120, 120, 120, 0.2)",
+      })),
+    };
+  })();
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-black text-white">
@@ -203,14 +249,6 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
             <ArrowLeft className="w-4 h-4" />
             <span className="text-[14px] font-semibold tracking-[0.025em] uppercase">Back</span>
           </button>
-          <div className="flex items-center gap-2.5">
-            <svg width="26" height="26" viewBox="0 0 20 20" fill="none">
-              <circle cx="10" cy="10" r="2" fill="#8052ff" />
-              <circle cx="10" cy="10" r="5" stroke="#8052ff" strokeWidth="1" opacity="0.6" />
-              <circle cx="10" cy="10" r="8" stroke="#8052ff" strokeWidth="1" opacity="0.3" />
-            </svg>
-            <span className="text-[14px] font-semibold tracking-[0.025em] uppercase">BlastRadius</span>
-          </div>
         </div>
         <div className="text-[12px] text-[#9a9a9a] uppercase tracking-[0.025em]">
           npm dependency graph
@@ -221,7 +259,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
       {/* Search — no container, floating on black */}
       <div className="px-8 pb-6">
         <div className="max-w-[1280px] mx-auto">
-        <div className="flex gap-3 max-w-[640px]">
+        <div className="flex gap-3 max-w-[500px] mx-auto">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9a9a]" />
             <input
@@ -267,7 +305,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
             ) : (
               <>
                 <Zap className="w-4 h-4" />
-                Blast Radius
+                Blast
               </>
             )}
           </button>
@@ -342,8 +380,12 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
                 nodeRelSize={6}
                 linkColor="color"
                 linkDirectionalArrowColor="color"
-                linkDirectionalArrowLength={4}
+                linkDirectionalArrowLength={3}
                 linkDirectionalArrowRelPos={1}
+                linkDirectionalParticles={2}
+                linkDirectionalParticleWidth={2}
+                linkDirectionalParticleSpeed={0.004}
+                linkDirectionalParticleColor={() => "#8052ff"}
                 onNodeClick={(node: Record<string, unknown>) => {
                   setSelectedNode({
                     id: node.id as number,
@@ -359,25 +401,82 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
                   const name = node.name as string;
                   const distance = node.distance as number;
                   const val = node.val as number;
-                  ctx.fillStyle = color;
-                  ctx.beginPath();
-                  ctx.arc(x, y, 5 + (val - 1) * 2, 0, 2 * Math.PI);
-                  ctx.fill();
+                  const radius = 5 + (val - 1) * 2;
+
+                  // Pulsing glow on source node
                   if (distance === 0) {
+                    const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.003);
                     ctx.shadowColor = color;
-                    ctx.shadowBlur = 20;
+                    ctx.shadowBlur = 15 + pulse * 25;
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius + 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    // Outer ring
+                    ctx.strokeStyle = color;
+                    ctx.globalAlpha = 0.3 + pulse * 0.3;
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius + 8 + pulse * 6, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                  } else {
+                    // Regular nodes — subtle glow
+                    ctx.shadowColor = color;
+                    ctx.shadowBlur = 8;
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius, 0, 2 * Math.PI);
                     ctx.fill();
                     ctx.shadowBlur = 0;
                   }
-                  if (globalScale > 1.5) {
-                    ctx.font = `${10 / globalScale}px Inter, sans-serif`;
+
+                  // Labels
+                  if (globalScale > 1.2) {
+                    const fontSize = distance === 0 ? 12 : 10;
+                    ctx.font = `${fontSize / globalScale}px Inter, sans-serif`;
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillText(name, x, y + 14 / globalScale);
+                    ctx.fillStyle = distance === 0 ? "#ffffff" : "#bdbdbd";
+                    ctx.fillText(name, x, y + (radius + 10) / globalScale);
                   }
                 }}
-                cooldownTicks={100}
+                linkCanvasObjectMode={() => "before"}
+                linkCanvasObject={(_link: Record<string, unknown>, ctx: CanvasRenderingContext2D, globalScale: number) => {
+                  // Draw concentric guide rings (behind everything, echoes the blast radius logo)
+                  if (blastResult) {
+                    const maxDist = blastResult.summary.maxDepth;
+                    const ringSpacing = 120;
+                    for (let d = 1; d <= maxDist; d++) {
+                      const radius = d * ringSpacing;
+                      ctx.strokeStyle = "rgba(128, 82, 255, 0.04)";
+                      ctx.lineWidth = 1 / globalScale;
+                      ctx.beginPath();
+                      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                      ctx.stroke();
+                    }
+                  }
+
+                  // Draw subtle gradient line for this link
+                  const link = _link as { source?: { x: number; y: number }; target?: { x: number; y: number } };
+                  const source = link.source;
+                  const target = link.target;
+                  if (!source || !target) return;
+
+                  const gradient = ctx.createLinearGradient(source.x, source.y, target.x, target.y);
+                  gradient.addColorStop(0, "rgba(128, 82, 255, 0.15)");
+                  gradient.addColorStop(1, "rgba(128, 82, 255, 0.05)");
+                  ctx.strokeStyle = gradient;
+                  ctx.lineWidth = 1 / globalScale;
+                  ctx.beginPath();
+                  ctx.moveTo(source.x, source.y);
+                  ctx.lineTo(target.x, target.y);
+                  ctx.stroke();
+                }}
+                enableNodeDrag={false}
+                cooldownTicks={0}
                 width={graphDimensions.width}
                 height={graphDimensions.height}
               />
