@@ -204,8 +204,10 @@ export default function AppPage() {
             <span className="text-[14px] font-semibold tracking-[0.025em] uppercase">Back</span>
           </Link>
           <div className="flex items-center gap-2.5">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-              <path d="M10 2L18 16H2L10 2Z" stroke="#8052ff" strokeWidth="1.5" />
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="2" fill="#8052ff" />
+              <circle cx="10" cy="10" r="5" stroke="#8052ff" strokeWidth="1" opacity="0.6" />
+              <circle cx="10" cy="10" r="8" stroke="#8052ff" strokeWidth="1" opacity="0.3" />
             </svg>
             <span className="text-[14px] font-semibold tracking-[0.025em] uppercase">BlastRadius</span>
           </div>

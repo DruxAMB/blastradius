@@ -17,15 +17,10 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 px-8 py-6">
         <div className="max-w-[1280px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-              <path d="M10 2L18 16H2L10 2Z" stroke="#8052ff" strokeWidth="1.5" />
-              <path d="M10 2L18 16H2L10 2Z" fill="url(#logo-gradient)" fillOpacity="0.2" />
-              <defs>
-                <linearGradient id="logo-gradient" x1="10" y1="2" x2="10" y2="16">
-                  <stop stopColor="#8052ff" />
-                  <stop offset="1" stopColor="#15846e" />
-                </linearGradient>
-              </defs>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="2" fill="#8052ff" />
+              <circle cx="10" cy="10" r="5" stroke="#8052ff" strokeWidth="1" opacity="0.6" />
+              <circle cx="10" cy="10" r="8" stroke="#8052ff" strokeWidth="1" opacity="0.3" />
             </svg>
             <span className="text-[14px] font-semibold tracking-[0.025em] uppercase">BlastRadius</span>
           </div>
