@@ -325,11 +325,11 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* Main content — full width for graph visualization */}
-      <div className="flex-1 overflow-hidden px-8 pb-6">
+      {/* Main content — graph full width, side panel aligned */}
+      <div className="flex-1 overflow-hidden pb-6">
         <div className="h-full flex overflow-hidden">
-        {/* Graph canvas — pure black void */}
-        <div ref={graphContainerRef} className="flex-1 relative bg-black">
+        {/* Graph canvas — full width */}
+        <div ref={graphContainerRef} className="flex-1 relative bg-black pl-8">
           {!blastResult && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-[#444]">
               <p className="text-[18px] font-light text-[#666]">Search for a package to visualize its blast radius</p>
@@ -497,8 +497,8 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
           )}
         </div>
 
-        {/* Side panel — no border, no card, floating on black */}
-        <div className="w-[400px] bg-black flex flex-col overflow-hidden">
+        {/* Side panel — aligned with header right edge */}
+        <div className="w-[400px] bg-black flex flex-col overflow-hidden pr-8">
           {/* Tabs — ghost text, no container */}
           <div className="flex px-8 py-4 gap-6">
             <TabButton active={activeTab === "blast"} onClick={() => setActiveTab("blast")} label="Blast Radius" />
