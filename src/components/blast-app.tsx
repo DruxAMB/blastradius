@@ -196,7 +196,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-black text-white">
       {/* Header — minimal, transparent on black */}
-      <header className="flex items-center justify-between px-6 py-4">
+      <header className="flex items-center justify-between px-8 py-4">
         <div className="flex items-center gap-2">
           <button onClick={onBack} className="flex items-center gap-2 text-[#9a9a9a] hover:text-white transition-colors">
             <ArrowLeft className="w-4 h-4" />
@@ -217,7 +217,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
       </header>
 
       {/* Search — no container, floating on black */}
-      <div className="px-6 pb-6">
+      <div className="px-8 pb-6">
         <div className="flex gap-3 max-w-[640px] mx-auto">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9a9a]" />
@@ -273,7 +273,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
 
       {/* Error — minimal text on black */}
       {error && (
-        <div className="px-6 pb-4">
+        <div className="px-8 pb-4">
           <div className="max-w-[640px] mx-auto flex items-center gap-2 text-[14px] text-[#ffb829]">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             {error}
@@ -392,14 +392,14 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
         {/* Side panel — no border, no card, floating on black */}
         <div className="w-[400px] bg-black flex flex-col overflow-hidden">
           {/* Tabs — ghost text, no container */}
-          <div className="flex px-6 py-4 gap-6">
+          <div className="flex px-8 py-4 gap-6">
             <TabButton active={activeTab === "blast"} onClick={() => setActiveTab("blast")} label="Blast Radius" />
             <TabButton active={activeTab === "maintainers"} onClick={() => setActiveTab("maintainers")} label="Maintainers" />
             <TabButton active={activeTab === "typosquat"} onClick={() => setActiveTab("typosquat")} label="Typosquat" />
           </div>
 
           {/* Tab content — floating on black */}
-          <div className="flex-1 overflow-y-auto px-6 pb-6">
+          <div className="flex-1 overflow-y-auto px-8 pb-6">
             {activeTab === "blast" && <BlastTab selectedNode={selectedNode} blastResult={blastResult} />}
             {activeTab === "maintainers" && <MaintainersTab maintainers={maintainers} loading={tabLoading} packageName={blastResult?.package} />}
             {activeTab === "typosquat" && <TyposquatTab candidates={typosquats} loading={tabLoading} packageName={blastResult?.package} />}
