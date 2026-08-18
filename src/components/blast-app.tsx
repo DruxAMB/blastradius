@@ -464,6 +464,8 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
                   const source = link.source;
                   const target = link.target;
                   if (!source || !target) return;
+                  if (typeof source.x !== "number" || typeof target.x !== "number") return;
+                  if (!isFinite(source.x) || !isFinite(source.y) || !isFinite(target.x) || !isFinite(target.y)) return;
 
                   const gradient = ctx.createLinearGradient(source.x, source.y, target.x, target.y);
                   gradient.addColorStop(0, "rgba(128, 82, 255, 0.15)");
