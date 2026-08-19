@@ -18,7 +18,7 @@ Type a compromised package name → BlastRadius executes a transitive reverse de
 
 ![BlastRadius graph visualization](public/graph-shot.gif)
 
-[Demo video — to be added]
+[Demo video — https://youtu.be/mSUc2BTYHmQ]
 
 ### The money shot
 
