@@ -141,7 +141,12 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
       const res = await fetch(`/api/blast-radius?package=${encodeURIComponent(name)}`);
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to compute blast radius");
+        // If HydraDB is unreachable (500 with connection error), show setup modal
+        if (res.status === 500 && data.error?.includes("Failed to compute")) {
+          setShowSetupModal(true);
+        } else {
+          setError(data.error ?? "Failed to compute blast radius");
+        }
         setBlastResult(null);
       } else {
         setBlastResult(data);
