@@ -117,12 +117,12 @@ export default function LandingPage() {
                       Calculate Blast Radius
                     </button>
                     <a
-                      href="https://github.com/hydra-db/hydradb"
+                      href="https://github.com/DruxAMB/blastradius"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="btn-ghost"
                     >
-                      HydraDB OSS →
+                      Source Code →
                     </a>
                   </div>
                 </FadeUp>

@@ -109,6 +109,19 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
     return () => window.removeEventListener("resize", updateDimensions);
   }, []);
 
+  // Health check — if HydraDB is unreachable, show setup modal immediately on mount
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const res = await fetch("/api/search?q=es");
+        if (!res.ok) setShowSetupModal(true);
+      } catch {
+        setShowSetupModal(true);
+      }
+    };
+    checkHealth();
+  }, []);
+
   const handleSearchChange = useCallback((value: string) => {
     setQuery(value);
     setShowSuggestions(true);
