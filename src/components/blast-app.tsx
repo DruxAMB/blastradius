@@ -91,6 +91,14 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
   const [graphDimensions, setGraphDimensions] = useState({ width: 800, height: 600 });
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // Live compromise propagation
+  const [propagationStage, setPropagationStage] = useState(-1); // -1 = not started, 0..maxDist = current hop
+  const [showQueryOverlay, setShowQueryOverlay] = useState(false);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const propagationTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const propagationStartTimeRef = useRef(0);
+
   useEffect(() => {
     const updateDimensions = () => {
       setGraphDimensions({ width: window.innerWidth, height: window.innerHeight });
@@ -175,34 +183,91 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
     setTyposquats([]);
   }, [blastResult?.package]);
 
+  // Live compromise propagation — reveal nodes hop by hop
+  useEffect(() => {
+    // Clear any previous propagation timers
+    propagationTimersRef.current.forEach(clearTimeout);
+    propagationTimersRef.current = [];
+    if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+    setPropagationStage(-1);
+    setElapsedMs(0);
+
+    if (!blastResult) return;
+
+    const maxDist = blastResult.summary.maxDepth;
+    const stageDelay = 600; // ms between each hop wave
+
+    // Show Cypher query overlay first
+    setShowQueryOverlay(true);
+    setPropagationStage(-1);
+
+    const overlayTimer = setTimeout(() => {
+      setShowQueryOverlay(false);
+      propagationStartTimeRef.current = Date.now();
+
+      // Start elapsed timer
+      elapsedTimerRef.current = setInterval(() => {
+        setElapsedMs(Date.now() - propagationStartTimeRef.current);
+      }, 50);
+
+      // Reveal each ring with delay
+      for (let d = 0; d <= maxDist; d++) {
+        const t = setTimeout(() => {
+          setPropagationStage(d);
+          if (d === maxDist) {
+            // Stop elapsed timer after last wave
+            setTimeout(() => {
+              if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+            }, 300);
+          }
+        }, d * stageDelay);
+        propagationTimersRef.current.push(t);
+      }
+    }, 1500); // 1.5s overlay display time
+
+    propagationTimersRef.current.push(overlayTimer);
+
+    return () => {
+      propagationTimersRef.current.forEach(clearTimeout);
+      propagationTimersRef.current = [];
+      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current);
+    };
+  }, [blastResult]);
+
   // Compute radial layout: source at center, dependents arranged in rings by distance
+  // Only show nodes up to the current propagation stage
   const graphData = (() => {
     if (!blastResult) return { nodes: [], links: [] };
 
-    // Group nodes by distance
+    // Filter nodes by propagation stage (-1 = none visible, 0 = source only, etc.)
+    const visibleNodes = propagationStage < 0
+      ? []
+      : blastResult.nodes.filter((n) => n.distance <= propagationStage);
+
+    const visibleNodeIds = new Set(visibleNodes.map((n) => n.id));
+
+    // Group visible nodes by distance
     const byDistance = new Map<number, typeof blastResult.nodes>();
-    for (const n of blastResult.nodes) {
+    for (const n of visibleNodes) {
       const arr = byDistance.get(n.distance) ?? [];
       arr.push(n);
       byDistance.set(n.distance, arr);
     }
+    if (byDistance.size === 0) return { nodes: [], links: [] };
     const maxDist = Math.max(...byDistance.keys());
 
     // Assign positions: source at (0,0), each ring at increasing radius
-    // Ring radius scales with distance — more space for inner rings
     const ringSpacing = 120;
     const nodePositions = new Map<number, { x: number; y: number }>();
 
     for (const [dist, nodes] of byDistance) {
       if (dist === 0) {
-        // Source at center
         nodePositions.set(nodes[0].id, { x: 0, y: 0 });
         continue;
       }
       const radius = dist * ringSpacing;
-      // Distribute nodes evenly on the ring
       const angleStep = (Math.PI * 2) / nodes.length;
-      const angleOffset = dist * 0.3; // offset each ring so nodes don't line up
+      const angleOffset = dist * 0.3;
       nodes.forEach((n, i) => {
         const angle = i * angleStep + angleOffset;
         nodePositions.set(n.id, {
@@ -213,7 +278,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
     }
 
     return {
-      nodes: blastResult.nodes.map((n) => {
+      nodes: visibleNodes.map((n) => {
         const pos = nodePositions.get(n.id) ?? { x: 0, y: 0 };
         return {
           id: n.id,
@@ -224,17 +289,25 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
           val: n.distance === 0 ? 4 : Math.max(1, 3 - n.distance * 0.3),
           x: pos.x,
           y: pos.y,
-          fx: pos.x, // fixed position — no force simulation
+          fx: pos.x,
           fy: pos.y,
         };
       }),
-      links: blastResult.links.map((l) => ({
-        source: l.source,
-        target: l.target,
-        color: "rgba(120, 120, 120, 0.2)",
-      })),
+      // Only show links where both endpoints are visible
+      links: blastResult.links
+        .filter((l) => visibleNodeIds.has(l.source) && visibleNodeIds.has(l.target))
+        .map((l) => ({
+          source: l.source,
+          target: l.target,
+          color: "rgba(120, 120, 120, 0.2)",
+        })),
     };
   })();
+
+  // Count of currently visible nodes (for live counter)
+  const visibleCount = propagationStage >= 0 && blastResult
+    ? blastResult.nodes.filter((n) => n.distance <= propagationStage).length
+    : 0;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-black text-white">
@@ -342,25 +415,53 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
           )}
           {blastResult && (
             <>
-              {/* Summary — floating text, no container */}
+              {/* Cypher query overlay — shows the actual query before graph explodes */}
+              {showQueryOverlay && (
+                <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/90">
+                  <div className="font-mono text-[13px] leading-[1.8] text-[#bdbdbd] max-w-[600px] px-8">
+                    <div className="text-[#666] mb-3 text-[11px] uppercase tracking-[0.05em]">HydraDB · OpenCypher</div>
+                    <div><span className="text-[#8052ff]">CALL</span> algo.SSpaths(&#123;</div>
+                    <div className="pl-4">sourceNode: <span className="text-[#ffb829]">$pkgId</span>,</div>
+                    <div className="pl-4">relTypes: [<span className="text-[#15846e]">&apos;DEPENDS_ON&apos;</span>],</div>
+                    <div className="pl-4">relDirection: <span className="text-[#15846e]">&apos;incoming&apos;</span>,</div>
+                    <div className="pl-4">maxLen: <span className="text-[#ffb829]">10</span>,</div>
+                    <div className="pl-4">pathCount: <span className="text-[#ffb829]">200</span></div>
+                    <div>&#125;) <span className="text-[#8052ff]">YIELD</span> path <span className="text-[#8052ff]">RETURN</span> path</div>
+                    <div className="mt-4 text-[#666] text-[11px] animate-pulse">Executing traversal...</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Summary — live counter during propagation, full stats after */}
               <div className="absolute top-4 left-0 right-0 z-10 flex items-center gap-6 text-[14px] backdrop-blur-lg">
                 <span className="text-[#8052ff] font-semibold">{blastResult.package}</span>
                 <span className="text-[#333]">·</span>
-                <span className="text-[#bdbdbd]">
-                  <span className="text-white font-semibold">{blastResult.summary.totalPackages}</span> affected
-                </span>
-                <span className="text-[#333]">·</span>
-                <span className="text-[#bdbdbd]">
-                  <span className="text-[#ffb829] font-semibold">{blastResult.summary.directDependents}</span> direct
-                </span>
-                <span className="text-[#333]">·</span>
-                <span className="text-[#bdbdbd]">
-                  <span className="text-white font-semibold">{blastResult.summary.transitiveDependents}</span> transitive
-                </span>
-                <span className="text-[#333]">·</span>
-                <span className="text-[#bdbdbd]">
-                  depth <span className="text-white font-semibold">{blastResult.summary.maxDepth}</span>
-                </span>
+                {propagationStage >= 0 && propagationStage < blastResult.summary.maxDepth ? (
+                  <span className="text-[#bdbdbd]">
+                    <span className="text-white font-semibold tabular-nums">{visibleCount}</span> affected
+                    <span className="text-[#8052ff] ml-2 tabular-nums">· {(elapsedMs / 1000).toFixed(1)}s</span>
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-[#bdbdbd]">
+                      <span className="text-white font-semibold">{blastResult.summary.totalPackages}</span> affected
+                    </span>
+                    <span className="text-[#333]">·</span>
+                    <span className="text-[#bdbdbd]">
+                      <span className="text-[#ffb829] font-semibold">{blastResult.summary.directDependents}</span> direct
+                    </span>
+                    <span className="text-[#333]">·</span>
+                    <span className="text-[#bdbdbd]">
+                      <span className="text-white font-semibold">{blastResult.summary.transitiveDependents}</span> transitive
+                    </span>
+                    <span className="text-[#333]">·</span>
+                    <span className="text-[#bdbdbd]">
+                      depth <span className="text-white font-semibold">{blastResult.summary.maxDepth}</span>
+                    </span>
+                    <span className="text-[#333]">·</span>
+                    <span className="text-[#8052ff] tabular-nums">{(elapsedMs / 1000).toFixed(1)}s</span>
+                  </>
+                )}
                 {blastResult.summary.deprecated && (
                   <span className="text-[#ffb829] text-[12px] uppercase tracking-[0.025em] font-semibold">
                     Deprecated
