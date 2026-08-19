@@ -6,6 +6,8 @@ BlastRadius computes the complete transitive blast radius of any npm package in 
 
 This is a graph traversal problem. The question a vector database cannot answer.
 
+![BlastRadius](public/hero-shot.png)
+
 > In May 2026, the TanStack compromise hit 160+ packages in 6 minutes. By the time anyone asked "what's affected?" — it was already everywhere. BlastRadius answers that question in one query.
 
 ---
@@ -13,6 +15,8 @@ This is a graph traversal problem. The question a vector database cannot answer.
 ## How it works
 
 Type a compromised package name → BlastRadius executes a transitive reverse dependency closure on HydraDB → the graph explodes outward hop by hop, showing every affected package in real time.
+
+![BlastRadius graph visualization](public/graph-shot.gif)
 
 [Demo video — to be added]
 
@@ -173,7 +177,7 @@ This traverses incoming `DEPENDS_ON` edges from the compromised package, finding
 
 ## Links
 
-- **Live demo:** https://blastradiusv1.vercel.app/ (requires local HydraDB — see Setup)
+- **Live demo:** https://blastradius.druxamb.dev/ (requires local HydraDB — see Setup)
 - **Source code:** https://github.com/DruxAMB/blastradius
 - **HydraDB:** https://github.com/hydra-db/hydradb
 
