@@ -343,7 +343,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
           {blastResult && (
             <>
               {/* Summary — floating text, no container */}
-              <div className="absolute top-4 left-0 right-0 z-10 flex items-center gap-6 text-[14px]">
+              <div className="absolute top-4 left-0 right-0 z-10 flex items-center gap-6 text-[14px] backdrop-blur-lg">
                 <span className="text-[#8052ff] font-semibold">{blastResult.package}</span>
                 <span className="text-[#333]">·</span>
                 <span className="text-[#bdbdbd]">
@@ -369,7 +369,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
               </div>
 
               {/* ForceGraph2D — absolute positioned to span full viewport so rings display fully */}
-              <div className="fixed inset-0 z-0 pointer-events-auto">
+              <div className="fixed inset-0 z-0 top-20 -translate-x-[10%] pointer-events-auto">
                 <ForceGraph2D
                   ref={graphRef as never}
                   graphData={graphData}
@@ -498,7 +498,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
         </div>
 
         {/* Side panel — no border, no card, floating on black */}
-        <div className="w-[400px] bg-black flex flex-col overflow-hidden">
+        <div className="w-[400px] min-h-[500px] h-fit backdrop-blur-lg flex flex-col overflow-hidden">
           {/* Tabs — ghost text, no container */}
           <div className="flex px-8 py-4 gap-6">
             <TabButton active={activeTab === "blast"} onClick={() => setActiveTab("blast")} label="Blast Radius" />
