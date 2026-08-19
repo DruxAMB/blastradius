@@ -93,10 +93,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     const updateDimensions = () => {
-      if (graphContainerRef.current) {
-        const rect = graphContainerRef.current.getBoundingClientRect();
-        setGraphDimensions({ width: rect.width, height: rect.height });
-      }
+      setGraphDimensions({ width: window.innerWidth, height: window.innerHeight });
     };
     updateDimensions();
     window.addEventListener("resize", updateDimensions);
@@ -325,11 +322,11 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* Main content — graph full width, side panel aligned */}
-      <div className="flex-1 overflow-hidden pb-6">
-        <div className="h-full flex overflow-hidden">
-        {/* Graph canvas — full width */}
-        <div ref={graphContainerRef} className="flex-1 relative bg-black pl-8">
+      {/* Main content */}
+      <div className="flex-1 overflow-hidden px-8 pb-6">
+        <div className="max-w-[1280px] mx-auto h-full flex overflow-hidden">
+        {/* Graph canvas — pure black void */}
+        <div ref={graphContainerRef} className="flex-1 relative bg-black">
           {!blastResult && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-[#444]">
               <p className="text-[18px] font-light text-[#666]">Search for a package to visualize its blast radius</p>
@@ -371,117 +368,120 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
                 )}
               </div>
 
-              <ForceGraph2D
-                ref={graphRef as never}
-                graphData={graphData}
-                nodeLabel="name"
-                nodeColor="color"
-                nodeVal="val"
-                nodeRelSize={6}
-                linkColor="color"
-                linkDirectionalArrowColor="color"
-                linkDirectionalArrowLength={3}
-                linkDirectionalArrowRelPos={1}
-                linkDirectionalParticles={2}
-                linkDirectionalParticleWidth={2}
-                linkDirectionalParticleSpeed={0.004}
-                linkDirectionalParticleColor={() => "#8052ff"}
-                onNodeClick={(node: Record<string, unknown>) => {
-                  setSelectedNode({
-                    id: node.id as number,
-                    name: node.name as string,
-                    distance: node.distance as number,
-                    description: (node.description as string) ?? "",
-                  });
-                }}
-                nodeCanvasObject={(node: Record<string, unknown>, ctx: CanvasRenderingContext2D, globalScale: number) => {
-                  const x = node.x as number;
-                  const y = node.y as number;
-                  const color = node.color as string;
-                  const name = node.name as string;
-                  const distance = node.distance as number;
-                  const val = node.val as number;
-                  const radius = 5 + (val - 1) * 2;
+              {/* ForceGraph2D — absolute positioned to span full viewport so rings display fully */}
+              <div className="fixed inset-0 z-0 pointer-events-auto">
+                <ForceGraph2D
+                  ref={graphRef as never}
+                  graphData={graphData}
+                  nodeLabel="name"
+                  nodeColor="color"
+                  nodeVal="val"
+                  nodeRelSize={6}
+                  linkColor="color"
+                  linkDirectionalArrowColor="color"
+                  linkDirectionalArrowLength={3}
+                  linkDirectionalArrowRelPos={1}
+                  linkDirectionalParticles={2}
+                  linkDirectionalParticleWidth={2}
+                  linkDirectionalParticleSpeed={0.004}
+                  linkDirectionalParticleColor={() => "#8052ff"}
+                  onNodeClick={(node: Record<string, unknown>) => {
+                    setSelectedNode({
+                      id: node.id as number,
+                      name: node.name as string,
+                      distance: node.distance as number,
+                      description: (node.description as string) ?? "",
+                    });
+                  }}
+                  nodeCanvasObject={(node: Record<string, unknown>, ctx: CanvasRenderingContext2D, globalScale: number) => {
+                    const x = node.x as number;
+                    const y = node.y as number;
+                    const color = node.color as string;
+                    const name = node.name as string;
+                    const distance = node.distance as number;
+                    const val = node.val as number;
+                    const radius = 5 + (val - 1) * 2;
 
-                  // Pulsing glow on source node
-                  if (distance === 0) {
-                    const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.003);
-                    ctx.shadowColor = color;
-                    ctx.shadowBlur = 15 + pulse * 25;
-                    ctx.fillStyle = color;
-                    ctx.beginPath();
-                    ctx.arc(x, y, radius + 2, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-
-                    // Outer ring
-                    ctx.strokeStyle = color;
-                    ctx.globalAlpha = 0.3 + pulse * 0.3;
-                    ctx.lineWidth = 1.5;
-                    ctx.beginPath();
-                    ctx.arc(x, y, radius + 8 + pulse * 6, 0, 2 * Math.PI);
-                    ctx.stroke();
-                    ctx.globalAlpha = 1;
-                  } else {
-                    // Regular nodes — subtle glow
-                    ctx.shadowColor = color;
-                    ctx.shadowBlur = 8;
-                    ctx.fillStyle = color;
-                    ctx.beginPath();
-                    ctx.arc(x, y, radius, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                  }
-
-                  // Labels
-                  if (globalScale > 1.2) {
-                    const fontSize = distance === 0 ? 12 : 10;
-                    ctx.font = `${fontSize / globalScale}px Inter, sans-serif`;
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillStyle = distance === 0 ? "#ffffff" : "#bdbdbd";
-                    ctx.fillText(name, x, y + (radius + 10) / globalScale);
-                  }
-                }}
-                linkCanvasObjectMode={() => "before"}
-                linkCanvasObject={(_link: Record<string, unknown>, ctx: CanvasRenderingContext2D, globalScale: number) => {
-                  // Draw concentric guide rings (behind everything, echoes the blast radius logo)
-                  if (blastResult) {
-                    const maxDist = blastResult.summary.maxDepth;
-                    const ringSpacing = 120;
-                    for (let d = 1; d <= maxDist; d++) {
-                      const radius = d * ringSpacing;
-                      ctx.strokeStyle = "rgba(128, 82, 255, 0.04)";
-                      ctx.lineWidth = 1 / globalScale;
+                    // Pulsing glow on source node
+                    if (distance === 0) {
+                      const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.003);
+                      ctx.shadowColor = color;
+                      ctx.shadowBlur = 15 + pulse * 25;
+                      ctx.fillStyle = color;
                       ctx.beginPath();
-                      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                      ctx.arc(x, y, radius + 2, 0, 2 * Math.PI);
+                      ctx.fill();
+                      ctx.shadowBlur = 0;
+
+                      // Outer ring
+                      ctx.strokeStyle = color;
+                      ctx.globalAlpha = 0.3 + pulse * 0.3;
+                      ctx.lineWidth = 1.5;
+                      ctx.beginPath();
+                      ctx.arc(x, y, radius + 8 + pulse * 6, 0, 2 * Math.PI);
                       ctx.stroke();
+                      ctx.globalAlpha = 1;
+                    } else {
+                      // Regular nodes — subtle glow
+                      ctx.shadowColor = color;
+                      ctx.shadowBlur = 8;
+                      ctx.fillStyle = color;
+                      ctx.beginPath();
+                      ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                      ctx.fill();
+                      ctx.shadowBlur = 0;
                     }
-                  }
 
-                  // Draw subtle gradient line for this link
-                  const link = _link as { source?: { x: number; y: number }; target?: { x: number; y: number } };
-                  const source = link.source;
-                  const target = link.target;
-                  if (!source || !target) return;
-                  if (typeof source.x !== "number" || typeof target.x !== "number") return;
-                  if (!isFinite(source.x) || !isFinite(source.y) || !isFinite(target.x) || !isFinite(target.y)) return;
+                    // Labels
+                    if (globalScale > 1.2) {
+                      const fontSize = distance === 0 ? 12 : 10;
+                      ctx.font = `${fontSize / globalScale}px Inter, sans-serif`;
+                      ctx.textAlign = "center";
+                      ctx.textBaseline = "middle";
+                      ctx.fillStyle = distance === 0 ? "#ffffff" : "#bdbdbd";
+                      ctx.fillText(name, x, y + (radius + 10) / globalScale);
+                    }
+                  }}
+                  linkCanvasObjectMode={() => "before"}
+                  linkCanvasObject={(_link: Record<string, unknown>, ctx: CanvasRenderingContext2D, globalScale: number) => {
+                    // Draw concentric guide rings (behind everything, echoes the blast radius logo)
+                    if (blastResult) {
+                      const maxDist = blastResult.summary.maxDepth;
+                      const ringSpacing = 120;
+                      for (let d = 1; d <= maxDist; d++) {
+                        const radius = d * ringSpacing;
+                        ctx.strokeStyle = "rgba(128, 82, 255, 0.04)";
+                        ctx.lineWidth = 1 / globalScale;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                        ctx.stroke();
+                      }
+                    }
 
-                  const gradient = ctx.createLinearGradient(source.x, source.y, target.x, target.y);
-                  gradient.addColorStop(0, "rgba(128, 82, 255, 0.15)");
-                  gradient.addColorStop(1, "rgba(128, 82, 255, 0.05)");
-                  ctx.strokeStyle = gradient;
-                  ctx.lineWidth = 1 / globalScale;
-                  ctx.beginPath();
-                  ctx.moveTo(source.x, source.y);
-                  ctx.lineTo(target.x, target.y);
-                  ctx.stroke();
-                }}
-                enableNodeDrag={true}
-                cooldownTicks={0}
-                width={graphDimensions.width}
-                height={graphDimensions.height}
-              />
+                    // Draw subtle gradient line for this link
+                    const link = _link as { source?: { x: number; y: number }; target?: { x: number; y: number } };
+                    const source = link.source;
+                    const target = link.target;
+                    if (!source || !target) return;
+                    if (typeof source.x !== "number" || typeof target.x !== "number") return;
+                    if (!isFinite(source.x) || !isFinite(source.y) || !isFinite(target.x) || !isFinite(target.y)) return;
+
+                    const gradient = ctx.createLinearGradient(source.x, source.y, target.x, target.y);
+                    gradient.addColorStop(0, "rgba(128, 82, 255, 0.15)");
+                    gradient.addColorStop(1, "rgba(128, 82, 255, 0.05)");
+                    ctx.strokeStyle = gradient;
+                    ctx.lineWidth = 1 / globalScale;
+                    ctx.beginPath();
+                    ctx.moveTo(source.x, source.y);
+                    ctx.lineTo(target.x, target.y);
+                    ctx.stroke();
+                  }}
+                  enableNodeDrag={true}
+                  cooldownTicks={0}
+                  width={graphDimensions.width}
+                  height={graphDimensions.height}
+                />
+              </div>
 
               {/* Legend — floating, no container */}
               <div className="absolute bottom-4 left-0 text-[12px] flex items-center gap-4">
@@ -497,8 +497,8 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
           )}
         </div>
 
-        {/* Side panel — aligned with header right edge */}
-        <div className="w-[400px] bg-black flex flex-col overflow-hidden pr-8">
+        {/* Side panel — no border, no card, floating on black */}
+        <div className="w-[400px] bg-black flex flex-col overflow-hidden">
           {/* Tabs — ghost text, no container */}
           <div className="flex px-8 py-4 gap-6">
             <TabButton active={activeTab === "blast"} onClick={() => setActiveTab("blast")} label="Blast Radius" />
