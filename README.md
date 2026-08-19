@@ -120,4 +120,14 @@ This traverses incoming `DEPENDS_ON` edges from the compromised package, finding
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE)
+
+## Attribution
+
+- [HydraDB](https://github.com/hydra-db/hydradb) — graph database engine (OpenCypher, path procedures)
+- [Next.js](https://nextjs.org) — React framework
+- [react-force-graph-2d](https://github.com/vasturiano/react-force-graph-2d) — graph visualization
+- [Tailwind CSS](https://tailwindcss.com) — styling
+- [lucide-react](https://lucide.dev) — icons
+- [GSAP](https://gsap.com) — scroll animations
+- [npm registry API](https://registry.npmjs.org) — package metadata and dependency data
