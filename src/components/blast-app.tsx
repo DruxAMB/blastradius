@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Search, AlertTriangle, Users, Type, Loader2, ArrowLeft, Zap } from "lucide-react";
+import { Search, AlertTriangle, Users, Type, Loader2, ArrowLeft, Zap, X, Terminal } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
@@ -81,6 +81,7 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(false);
   const [blastResult, setBlastResult] = useState<BlastRadiusResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showSetupModal, setShowSetupModal] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("blast");
   const [selectedNode, setSelectedNode] = useState<BlastNode | null>(null);
   const [maintainers, setMaintainers] = useState<SharedMaintainer[]>([]);
@@ -152,7 +153,8 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
         }, 100);
       }
     } catch {
-      setError("Failed to connect to HydraDB. Is the Docker container running?");
+      // HydraDB unreachable — show setup modal with instructions
+      setShowSetupModal(true);
       setBlastResult(null);
     } finally {
       setLoading(false);
@@ -391,6 +393,74 @@ export default function BlastApp({ onBack }: { onBack: () => void }) {
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
+          </div>
+        </div>
+      )}
+
+      {/* Setup modal — shown when HydraDB is unreachable (e.g. on deployed URL) */}
+      {showSetupModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowSetupModal(false)}
+        >
+          <div
+            className="relative w-full max-w-[520px] mx-8 bg-[#0a0a0a] border border-[#222] rounded-lg overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+              <div className="flex items-center gap-2.5">
+                <Terminal className="w-4 h-4 text-[#8052ff]" />
+                <span className="text-[14px] font-semibold text-white">HydraDB Connection Required</span>
+              </div>
+              <button
+                onClick={() => setShowSetupModal(false)}
+                className="text-[#666] hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-[13px] text-[#9a9a9a] leading-relaxed">
+                BlastRadius requires a running HydraDB instance to execute graph traversal queries.
+                The database isn't reachable from this deployment. Run it locally in 3 steps:
+              </p>
+
+              {/* Step 1 */}
+              <div className="space-y-1.5">
+                <div className="text-[11px] text-[#666] uppercase tracking-[0.05em]">1. Clone &amp; install</div>
+                <div className="bg-black border border-[#1a1a1a] rounded px-4 py-2.5 font-mono text-[12px] text-[#bdbdbd]">
+                  git clone https://github.com/DruxAMB/blastradius.git<br />
+                  cd blastradius &amp;&amp; npm install
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="space-y-1.5">
+                <div className="text-[11px] text-[#666] uppercase tracking-[0.05em]">2. Start HydraDB + seed data</div>
+                <div className="bg-black border border-[#1a1a1a] rounded px-4 py-2.5 font-mono text-[12px] text-[#bdbdbd]">
+                  docker compose up -d<br />
+                  npx tsx scripts/seed.ts
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="space-y-1.5">
+                <div className="text-[11px] text-[#666] uppercase tracking-[0.05em]">3. Run the app</div>
+                <div className="bg-black border border-[#1a1a1a] rounded px-4 py-2.5 font-mono text-[12px] text-[#bdbdbd]">
+                  npm run dev<span className="text-[#666]">  # open http://localhost:3000</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-[#1a1a1a]">
+                <p className="text-[12px] text-[#666] leading-relaxed">
+                  The demo video shows the full experience without local setup.
+                  See the <a href="https://github.com/DruxAMB/blastradius" target="_blank" rel="noopener noreferrer" className="text-[#8052ff] hover:underline">README</a> for details.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
